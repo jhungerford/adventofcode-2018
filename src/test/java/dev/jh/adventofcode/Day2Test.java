@@ -91,4 +91,24 @@ public class Day2Test {
 
     assertThat(checksum).isEqualTo(12);
   }
+
+  @Test
+  public void closeBoxIds() {
+    ImmutableList<String> boxIds = ImmutableList.of(
+        "abcde",
+        "fghij",
+        "klmno",
+        "pqrst",
+        "fguij",
+        "axcye",
+        "wvxyz"
+    );
+
+    assertThat(Day2.closeBoxIds(boxIds)).isEqualTo(new Day2.CloseBoxIds("fghij", "fguij"));
+  }
+
+  @Test
+  public void commonLetters() {
+    assertThat(Day2.commonLetters(new Day2.CloseBoxIds("fghij", "fguij"))).isEqualTo("fgij");
+  }
 }
