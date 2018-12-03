@@ -7,6 +7,7 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.io.Files;
 
 import java.io.File;
+import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -73,7 +74,7 @@ public class Day3 {
     }
   }
 
-  public static int numOverlappingSquares(ImmutableList<Claim> claims) {
+  private static int[][] layoutClaims(ImmutableList<Claim> claims) {
     int[][] fabric = new int[1000][1000];
 
     for (Claim claim : claims) {
@@ -83,6 +84,12 @@ public class Day3 {
         }
       }
     }
+
+    return fabric;
+  }
+
+  public static int numOverlappingSquares(ImmutableList<Claim> claims) {
+    int[][] fabric = layoutClaims(claims);
 
     int numOverlapping = 0;
     for (int y = 0; y < fabric.length; y ++) {
@@ -96,6 +103,30 @@ public class Day3 {
     return numOverlapping;
   }
 
+  public static String nonOverlappingClaim(ImmutableList<Claim> claims) {
+    int[][] fabric = layoutClaims(claims);
+
+    Optional<Claim> nonOverlappingClaim = claims.stream()
+        .filter(claim -> !claimOverlaps(fabric, claim))
+        .findFirst();
+
+    return nonOverlappingClaim
+        .map(claim -> claim.id)
+        .orElseThrow(() -> new IllegalArgumentException("All of the claims overlap"));
+  }
+
+  private static boolean claimOverlaps(int[][] fabric, Claim claim) {
+    for (int y = claim.topOffset; y < claim.topOffset + claim.height; y ++) {
+      for (int x = claim.leftOffset; x < claim.leftOffset + claim.width; x++) {
+        if (fabric[y][x] > 1) {
+          return true;
+        }
+      }
+    }
+
+    return false;
+  }
+
   public static void main(String[] args) throws Exception {
     File file = new File(Day1.class.getResource("/day3.txt").getFile());
     ImmutableList<String> lines = ImmutableList.copyOf(Files.readLines(file, Charsets.UTF_8));
@@ -104,5 +135,7 @@ public class Day3 {
 
     // Part 1: Number of squares where one or more claims overlap
     System.out.println("Part 1: " + numOverlappingSquares(claims));
+    // Part 2: Claim # that doesn't overlap at all
+    System.out.println("Part 2: " + nonOverlappingClaim(claims));
   }
 }
