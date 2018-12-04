@@ -16,6 +16,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.function.Function;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -345,24 +346,22 @@ public class Day4 {
    * @return Id of the guard who was asleep the most over the whole log
    */
   public static GuardMinute mostCumulativeMinutesAsleep(ImmutableList<DateLog> log) {
-    // Figure out which guard was asleep the most minutes cumulatively
-    Map<Integer, Integer> guardIdToMinutesAsleep = log.stream().collect(Collectors.groupingBy(
-        entry -> entry.guardId,
-        Collectors.summingInt(DateLog::minutesAsleep)
-    ));
+    Map<Integer, List<DateLog>> byGuardId = log.stream()
+        .collect(Collectors.groupingBy(entry -> entry.guardId));
 
-    int guardId = guardIdToMinutesAsleep.entrySet().stream()
-        .sorted(Comparator.comparingInt((Map.Entry<Integer, Integer> entry) -> entry.getValue()).reversed())
-        .mapToInt(Map.Entry::getKey)
+    Function<Map.Entry<Integer, List<DateLog>>, Integer> cumulativeMinutesAsleep = entry -> entry.getValue().stream()
+        .mapToInt(DateLog::minutesAsleep)
+        .sum();
+
+    return byGuardId.entrySet().stream()
+        // Figure out which guard was asleep for the most total minutes in the log
+        .sorted(Comparator.comparing(cumulativeMinutesAsleep).reversed())
+        // Determine which minute the guard was asleep on the most
+        .map(entry -> mostAsleepMinute(entry.getKey(), entry.getValue()))
+        // Pull out the guard id and minute
+        .map(minuteValue -> new GuardMinute(minuteValue.guardId, minuteValue.minute))
         .findFirst()
         .orElseThrow(() -> new IllegalArgumentException("No guards in the log"));
-
-    ImmutableList<DateLog> guardEntries = log.stream()
-        .filter(entry -> entry.guardId == guardId)
-        .collect(ImmutableList.toImmutableList());
-
-    MinuteValue minuteValue = mostAsleepMinute(guardId, guardEntries);
-    return new GuardMinute(minuteValue.guardId, minuteValue.minute);
   }
 
   /**
@@ -377,7 +376,7 @@ public class Day4 {
         .collect(Collectors.groupingBy(entry -> entry.guardId));
 
     return byGuardId.entrySet().stream()
-        // Figure out which minute each guard is asleep on the most, and how much they're asleep
+        // Figure out which minute each guard is asleep on the most, and how much they were asleep
         .map(entry -> mostAsleepMinute(entry.getKey(), entry.getValue()))
         // Pick the minute where a guard is asleep for more days than any other guard.
         .sorted(Comparator.comparing((MinuteValue minuteValue) -> minuteValue.value).reversed())
