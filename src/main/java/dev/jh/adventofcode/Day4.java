@@ -90,7 +90,7 @@ public class Day4 {
 
     /**
      * Returns the date that this entry should be logged in.  Guards can begin their shift before
-     * midnight, so '1518-11-01 23:58' and '1518-11-02 00:05' both belong to the '1519-11-02' shift.
+     * midnight, so '1518-11-01 23:58' and '1518-11-02 00:05' both belong to the '1518-11-02' shift.
      *
      * @return Date that the entry belongs to.
      */
@@ -355,12 +355,11 @@ public class Day4 {
 
     return byGuardId.entrySet().stream()
         // Figure out which guard was asleep for the most total minutes in the log
-        .sorted(Comparator.comparing(cumulativeMinutesAsleep).reversed())
+        .max(Comparator.comparing(cumulativeMinutesAsleep))
         // Determine which minute the guard was asleep on the most
         .map(entry -> mostAsleepMinute(entry.getKey(), entry.getValue()))
         // Pull out the guard id and minute
         .map(minuteValue -> new GuardMinute(minuteValue.guardId, minuteValue.minute))
-        .findFirst()
         .orElseThrow(() -> new IllegalArgumentException("No guards in the log"));
   }
 
@@ -379,10 +378,9 @@ public class Day4 {
         // Figure out which minute each guard is asleep on the most, and how much they were asleep
         .map(entry -> mostAsleepMinute(entry.getKey(), entry.getValue()))
         // Pick the minute where a guard is asleep for more days than any other guard.
-        .sorted(Comparator.comparing((MinuteValue minuteValue) -> minuteValue.value).reversed())
+        .max(Comparator.comparing(minuteValue -> minuteValue.value))
         // Answer only needs the guard and minute - discard the number of days the guard was asleep on the minute
         .map(minuteValue -> new GuardMinute(minuteValue.guardId, minuteValue.minute))
-        .findFirst()
         .orElseThrow(() -> new IllegalArgumentException("No guards in the log"));
   }
 
