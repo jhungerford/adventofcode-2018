@@ -101,12 +101,18 @@ public class Day4Test {
   }
 
   @Test
-  public void mostMinutesAsleepGuardId() {
-    assertThat(Day4.mostMinutesAsleepGuardId(EXAMPLE_LOG)).isEqualTo(10);
+  public void mostCumulativeMinutesAsleep() {
+    Day4.GuardMinute guardMinute = Day4.mostCumulativeMinutesAsleep(EXAMPLE_LOG);
+
+    assertThat(guardMinute).isEqualTo(new Day4.GuardMinute(10, 24));
+    assertThat(guardMinute.product()).isEqualTo(240);
   }
 
   @Test
-  public void mostAlseepMintue() {
-    assertThat(Day4.mostAsleepMinute(EXAMPLE_LOG, 10)).isEqualTo(24);
+  public void mostAsleepOnSameMinute() {
+    Day4.GuardMinute guardMinute = Day4.mostAsleepOnSameMinute(EXAMPLE_LOG);
+
+    assertThat(guardMinute).isEqualTo(new Day4.GuardMinute(99, 45));
+    assertThat(guardMinute.product()).isEqualTo(4455);
   }
 }
