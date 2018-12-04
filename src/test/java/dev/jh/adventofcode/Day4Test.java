@@ -12,7 +12,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 public class Day4Test {
 
-  public static final ImmutableList<String> EXAMPLE_LINES = ImmutableList.of(
+  private static final ImmutableList<String> EXAMPLE_LINES = ImmutableList.of(
       "[1518-11-01 00:25] wakes up",
       "[1518-11-01 00:30] falls asleep",
       "[1518-11-03 00:24] falls asleep",
@@ -32,6 +32,25 @@ public class Day4Test {
       "[1518-11-04 00:02] Guard #99 begins shift"
   );
 
+  private static final ImmutableList<Day4.DateLog> EXAMPLE_LOG = ImmutableList.of(
+      new Day4.DateLog(LocalDate.of(1518, 11, 1), 10, ImmutableList.of(
+          new Day4.SleepBlock(Day4.parseDateTime("1518-11-01 00:05"), Day4.parseDateTime("1518-11-01 00:25")),
+          new Day4.SleepBlock(Day4.parseDateTime("1518-11-01 00:30"), Day4.parseDateTime("1518-11-01 00:55"))
+      )),
+      new Day4.DateLog(LocalDate.of(1518, 11, 2), 99, ImmutableList.of(
+          new Day4.SleepBlock(Day4.parseDateTime("1518-11-02 00:40"), Day4.parseDateTime("1518-11-02 00:50"))
+      )),
+      new Day4.DateLog(LocalDate.of(1518, 11, 3), 10, ImmutableList.of(
+          new Day4.SleepBlock(Day4.parseDateTime("1518-11-03 00:24"), Day4.parseDateTime("1518-11-03 00:29"))
+      )),
+      new Day4.DateLog(LocalDate.of(1518, 11, 4), 99, ImmutableList.of(
+          new Day4.SleepBlock(Day4.parseDateTime("1518-11-04 00:36"), Day4.parseDateTime("1518-11-04 00:46"))
+      )),
+      new Day4.DateLog(LocalDate.of(1518, 11, 5), 99, ImmutableList.of(
+          new Day4.SleepBlock(Day4.parseDateTime("1518-11-05 00:45"), Day4.parseDateTime("1518-11-05 00:55"))
+      ))
+  );
+
   @Test
   public void parseTime() {
     assertThat(Day4.parseDateTime("1518-11-01 23:58")).isEqualTo(LocalDateTime.of(1518, 11, 1, 23, 58));
@@ -48,7 +67,7 @@ public class Day4Test {
   @Test
   public void parseLogEntry() {
     assertThat(Day4.LogEntry.parse("[1518-11-01 00:00] Guard #10 begins shift"))
-        .isEqualTo(new Day4.LogEntry(LocalDateTime.of(1518, 11, 1, 0, 0), Optional.of("#10"), BEGIN_SHIFT));
+        .isEqualTo(new Day4.LogEntry(LocalDateTime.of(1518, 11, 1, 0, 0), Optional.of(10), BEGIN_SHIFT));
     assertThat(Day4.LogEntry.parse("[1518-11-01 00:05] falls asleep"))
         .isEqualTo(new Day4.LogEntry(LocalDateTime.of(1518, 11, 1, 0, 5), Optional.empty(), FALL_ASLEEP));
     assertThat(Day4.LogEntry.parse("[1518-11-01 00:25] wakes up"))
@@ -57,33 +76,14 @@ public class Day4Test {
 
   @Test
   public void parseLines() {
-    ImmutableList<Day4.DateLog> expected = ImmutableList.of(
-        new Day4.DateLog(LocalDate.of(1518, 11, 1), "#10", ImmutableList.of(
-            new Day4.SleepBlock(Day4.parseDateTime("1518-11-01 00:05"), Day4.parseDateTime("1518-11-01 00:25")),
-            new Day4.SleepBlock(Day4.parseDateTime("1518-11-01 00:30"), Day4.parseDateTime("1518-11-01 00:55"))
-        )),
-        new Day4.DateLog(LocalDate.of(1518, 11, 2), "#99", ImmutableList.of(
-            new Day4.SleepBlock(Day4.parseDateTime("1518-11-02 00:40"), Day4.parseDateTime("1518-11-02 00:50"))
-        )),
-        new Day4.DateLog(LocalDate.of(1518, 11, 3), "#10", ImmutableList.of(
-            new Day4.SleepBlock(Day4.parseDateTime("1518-11-03 00:24"), Day4.parseDateTime("1518-11-03 00:29"))
-        )),
-        new Day4.DateLog(LocalDate.of(1518, 11, 4), "#99", ImmutableList.of(
-            new Day4.SleepBlock(Day4.parseDateTime("1518-11-04 00:36"), Day4.parseDateTime("1518-11-04 00:46"))
-        )),
-        new Day4.DateLog(LocalDate.of(1518, 11, 5), "#99", ImmutableList.of(
-            new Day4.SleepBlock(Day4.parseDateTime("1518-11-05 00:45"), Day4.parseDateTime("1518-11-05 00:55"))
-        ))
-    );
-
-    assertThat(Day4.parseLines(EXAMPLE_LINES)).isEqualTo(expected);
+    assertThat(Day4.parseLines(EXAMPLE_LINES)).isEqualTo(EXAMPLE_LOG);
   }
 
   @Test
   public void entryDateTime() {
-    assertThat(Day4.entryDateTime(Day4.parseDateTime("1518-11-01 23:58"))).isEqualTo(LocalDate.of(1518, 11, 2));
-    assertThat(Day4.entryDateTime(Day4.parseDateTime("1518-11-02 00:05"))).isEqualTo(LocalDate.of(1518, 11, 2));
-    assertThat(Day4.entryDateTime(Day4.parseDateTime("1518-11-02 00:59"))).isEqualTo(LocalDate.of(1518, 11, 2));
+    assertThat(Day4.LogEntry.parse("[1518-11-01 23:58] Guard #10 begins shift").entryDate()).isEqualTo(LocalDate.of(1518, 11, 2));
+    assertThat(Day4.LogEntry.parse("[1518-11-02 00:05] falls asleep").entryDate()).isEqualTo(LocalDate.of(1518, 11, 2));
+    assertThat(Day4.LogEntry.parse("[1518-11-02 00:59] wakes up").entryDate()).isEqualTo(LocalDate.of(1518, 11, 2));
   }
 
   @Test
@@ -98,5 +98,15 @@ public class Day4Test {
         "11-05  #99   .............................................##########.....";
 
     assertThat(Day4.printableLog(Day4.parseLines(EXAMPLE_LINES))).isEqualTo(expected);
+  }
+
+  @Test
+  public void mostMinutesAsleepGuardId() {
+    assertThat(Day4.mostMinutesAsleepGuardId(EXAMPLE_LOG)).isEqualTo(10);
+  }
+
+  @Test
+  public void mostAlseepMintue() {
+    assertThat(Day4.mostAsleepMinute(EXAMPLE_LOG, 10)).isEqualTo(24);
   }
 }

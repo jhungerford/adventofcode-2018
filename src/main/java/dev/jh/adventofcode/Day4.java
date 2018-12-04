@@ -11,7 +11,6 @@ import java.io.File;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.time.temporal.ChronoField;
 import java.time.temporal.ChronoUnit;
 import java.util.Comparator;
 import java.util.List;
@@ -68,15 +67,15 @@ public class Day4 {
   public static class LogEntry {
     private static final String DATE_PATTERN = "\\[(\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2})\\]";
 
-    private static final Pattern BEGIN_SHIFT_PATTERN = Pattern.compile(DATE_PATTERN + " Guard (#\\d+) begins shift");
+    private static final Pattern BEGIN_SHIFT_PATTERN = Pattern.compile(DATE_PATTERN + " Guard #(\\d+) begins shift");
     private static final Pattern FALL_ASLEEP_PATTERN = Pattern.compile(DATE_PATTERN + " falls asleep");
     private static final Pattern WAKE_UP_PATTERN = Pattern.compile(DATE_PATTERN + " wakes up");
 
     public final LocalDateTime time;
-    public final Optional<String> guardId;
+    public final Optional<Integer> guardId;
     public final LogEntryType type;
 
-    public LogEntry(LocalDateTime time, Optional<String> guardId, LogEntryType type) {
+    public LogEntry(LocalDateTime time, Optional<Integer> guardId, LogEntryType type) {
       this.time = Preconditions.checkNotNull(time, "Time is required");
       this.guardId = guardId;
       this.type = Preconditions.checkNotNull(type, "Type is required");
@@ -88,12 +87,22 @@ public class Day4 {
       }
     }
 
+    /**
+     * Returns the date that this entry should be logged in.  Guards can begin their shift before
+     * midnight, so '1518-11-01 23:58' and '1518-11-02 00:05' both belong to the '1519-11-02' shift.
+     *
+     * @return Date that the entry belongs to.
+     */
+    public LocalDate entryDate() {
+      return time.plus(1, ChronoUnit.HOURS).toLocalDate();
+    }
+
     public static LogEntry parse(String string) {
       Matcher beginShiftMatcher = BEGIN_SHIFT_PATTERN.matcher(string);
       if (beginShiftMatcher.matches()) {
         return new LogEntry(
             parseDateTime(beginShiftMatcher.group(1)),
-            Optional.of(beginShiftMatcher.group(2)),
+            Optional.of(Integer.parseInt(beginShiftMatcher.group(2))),
             LogEntryType.BEGIN_SHIFT
         );
       }
@@ -138,13 +147,17 @@ public class Day4 {
 
   public static class DateLog {
     public final LocalDate date;
-    public final String guardId;
+    public final int guardId;
     public final ImmutableList<SleepBlock> sleepBlocks;
 
-    public DateLog(LocalDate date, String guardId, ImmutableList<SleepBlock> sleepBlocks) {
+    public DateLog(LocalDate date, int guardId, ImmutableList<SleepBlock> sleepBlocks) {
       this.date = date;
       this.guardId = guardId;
       this.sleepBlocks = sleepBlocks;
+    }
+
+    public int minutesAsleep() {
+      return sleepBlocks.stream().mapToInt(SleepBlock::minutes).sum();
     }
 
     @Override
@@ -176,22 +189,11 @@ public class Day4 {
     return LocalDateTime.parse(string, DATE_FMT);
   }
 
-  /**
-   * Returns the entry that the given date time belongs in.  Guards can begin their shift before
-   * midnight, so '1518-11-01 23:58' and '1518-11-02 00:05' both belong to the '1519-11-02' shift.
-   *
-   * @param dateTime Date time
-   * @return Date that the entry belongs to.
-   */
-  public static LocalDate entryDateTime(LocalDateTime dateTime) {
-    return dateTime.plus(1, ChronoUnit.HOURS).toLocalDate();
-  }
-
   public static ImmutableList<DateLog> parseLines(ImmutableList<String> lines) {
     Map<LocalDate, List<LogEntry>> byDate = lines.stream()
         .sorted()
         .map(LogEntry::parse)
-        .collect(Collectors.groupingBy(entry -> entryDateTime(entry.time)));
+        .collect(Collectors.groupingBy(LogEntry::entryDate));
 
     return byDate.entrySet().stream()
         .sorted(Comparator.comparing(Map.Entry::getKey))
@@ -232,16 +234,16 @@ public class Day4 {
     for (DateLog entry : log) {
       bldr.append('\n')
           .append(entry.date.format(dateFormat))
-          .append("  ")
-          .append(String.format("%-6s", entry.guardId));
+          .append("  #")
+          .append(String.format("%-5s", entry.guardId));
 
       int minute = 0;
       for (SleepBlock sleepBlock : entry.sleepBlocks) {
-        for (; minute < sleepBlock.start.get(ChronoField.MINUTE_OF_HOUR); minute ++) {
+        for (; minute < sleepBlock.start.getMinute(); minute ++) {
           bldr.append('.');
         }
 
-        for (; minute < sleepBlock.end.get(ChronoField.MINUTE_OF_HOUR); minute ++) {
+        for (; minute < sleepBlock.end.getMinute(); minute ++) {
           bldr.append('#');
         }
       }
@@ -254,6 +256,61 @@ public class Day4 {
     return bldr.toString();
   }
 
+  /**
+   * Returns the id of the guard who was asleep for the most cumulative minutes over the whole log.
+   *
+   * @param log Log of which guard was on duty and when they were asleep
+   * @return Id of the guard who was asleep the most over the whole log
+   */
+  public static int mostMinutesAsleepGuardId(ImmutableList<DateLog> log) {
+    Map<Integer, Integer> guardIdToMinutesAsleep = log.stream().collect(Collectors.groupingBy(
+        entry -> entry.guardId,
+        Collectors.summingInt(DateLog::minutesAsleep)
+    ));
+
+    return guardIdToMinutesAsleep.entrySet().stream()
+        .sorted(Comparator.comparingInt((Map.Entry<Integer, Integer> entry) -> entry.getValue()).reversed())
+        .mapToInt(Map.Entry::getKey)
+        .findFirst()
+        .orElseThrow(() -> new IllegalArgumentException("No guards in the log"));
+  }
+
+  /**
+   * Returns the minute where the guard was asleep on the most days.
+   *
+   * @param log Log of which guard was on duty and when they were asleep
+   * @param guardId Id of the guard to check
+   * @return Minute that the guard was asleep on the most days.
+   */
+  public static int mostAsleepMinute(ImmutableList<DateLog> log, int guardId) {
+    ImmutableList<DateLog> guardEntries = log.stream()
+        .filter(entry -> entry.guardId == guardId)
+        .collect(ImmutableList.toImmutableList());
+
+    // Array of minutes containing the number of days where the guard was asleep on that minute
+    int[] sleepMinutes = new int[60];
+
+    for (DateLog entry : guardEntries) {
+      for (SleepBlock sleepBlock : entry.sleepBlocks) {
+        for (int minute = sleepBlock.start.getMinute(); minute < sleepBlock.end.getMinute(); minute ++) {
+          sleepMinutes[minute]++;
+        }
+      }
+    }
+
+    int maxMinute = 0;
+    int mostDaysAsleep = 0;
+    for (int minute = 0; minute < sleepMinutes.length; minute ++) {
+      int daysAsleep = sleepMinutes[minute];
+      if (daysAsleep > mostDaysAsleep) {
+        maxMinute = minute;
+        mostDaysAsleep = daysAsleep;
+      }
+    }
+
+    return maxMinute;
+  }
+
   public static void main(String[] args) throws Exception {
     File file = new File(Day4.class.getResource("/day4.txt").getFile());
     ImmutableList<String> lines = ImmutableList.copyOf(Files.readLines(file, Charsets.UTF_8)).stream()
@@ -262,5 +319,12 @@ public class Day4 {
 
     ImmutableList<DateLog> log = parseLines(lines);
     System.out.println(printableLog(log));
+
+    System.out.println("\n\n\n------------------------------\n\n");
+
+    // Part 1: guard id that was asleep the most, cumulatively * the minute they were asleep on the most days
+    int guardId = mostMinutesAsleepGuardId(log);
+    int minute = mostAsleepMinute(log, guardId);
+    System.out.println("Part 1: " + (guardId * minute));
   }
 }
