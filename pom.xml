@@ -4,14 +4,11 @@
 
     <groupId>dev.jh.adventofcode</groupId>
     <artifactId>adventofcode-2018</artifactId>
-    <version>1.0-</version>
-    <packaging>pom</packaging>
+    <version>1.0</version>
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
-        <build.suffix>local</build.suffix>
-        <build.name>${project.name}-${project.version}-${build.suffix}</build.name>
     </properties>
 
     <dependencies>
@@ -36,8 +33,6 @@
     </dependencies>
 
     <build>
-        <finalName>${build.name}</finalName>
-
         <plugins>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
@@ -48,8 +43,7 @@
                     <target>1.8</target>
                     <encoding>UTF-8</encoding>
                     <showDeprecation>true</showDeprecation>
-                    <compilerArgument>-Xlint:unchecked,deprecation,fallthrough,finally
-                    </compilerArgument>
+                    <compilerArgument>-Xlint:unchecked,deprecation,fallthrough,finally</compilerArgument>
                     <fork>true</fork>
                 </configuration>
             </plugin>
