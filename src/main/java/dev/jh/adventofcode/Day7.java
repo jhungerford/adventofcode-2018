@@ -50,12 +50,13 @@ public class Day7 {
   }
 
   /**
-   * Parses the given list of step restrictions, returning the root of the tree of steps that should be run.
+   * Parses the given list of step restrictions, returning the order that teh steps should be run in. If the
+   * prerequisites for more than one step have been met, the step with the lowest alphabetical order goes first.
    *
    * @param lines Lines to parse - one restriction per line
-   * @return Root of the step tree
+   * @return Order steps should be performed in.
    */
-  public static Step parseLines(ImmutableList<String> lines) {
+  public static String order(ImmutableList<String> lines) {
     Pattern pattern = Pattern.compile("Step ([A-Z]) must be finished before step ([A-Z]) can begin.");
 
     // Rip through the steps, building maps of step names -> next step names and step names -> previous step names
@@ -73,63 +74,20 @@ public class Day7 {
       }
     }
 
-    // Looking at which elements are in one map and not the other, stepToNextMap's unique is the first step name
-    // and stepToPreviousMap's unique is the last step name
-    final char firstStepName = Sets.difference(stepToNextMap.keySet(), stepToPreviousMap.keySet()).iterator().next();
-    final char lastStepName = Sets.difference(stepToPreviousMap.keySet(), stepToNextMap.keySet()).iterator().next();
+    // Looking at which elements are in one map and not the other, stepToNextMap's uniques are the first steps
+    PriorityQueue<Character> nextSteps = new PriorityQueue<>(Comparator.naturalOrder());
+    nextSteps.addAll(Sets.difference(stepToNextMap.keySet(), stepToPreviousMap.keySet()));
 
-    // Working backwards from the last step (which has no next steps), build up a map of steps.
-    Queue<Character> previousSteps = new ArrayDeque<>();
-    previousSteps.add(lastStepName);
-
-    Map<Character, Step> stepMap = new HashMap<>();
-    while (! previousSteps.isEmpty()) {
-      char name = previousSteps.remove();
-
-      ImmutableSet<Step> nextSteps = stepToNextMap.getOrDefault(name, ImmutableSet.of()).stream()
-          .map(stepMap::get)
-          .collect(ImmutableSet.toImmutableSet());
-
-      ImmutableSet<Character> prerequisites = ImmutableSet.copyOf(stepToPreviousMap.getOrDefault(name, ImmutableSet.of()));
-
-      stepMap.put(name, new Step(name, prerequisites, nextSteps));
-
-      prerequisites.stream()
-          .filter(prereq -> stepToNextMap.get(prereq).stream().allMatch(stepMap::containsKey))
-          .forEach(previousSteps::add);
-    }
-
-    return stepMap.get(firstStepName);
-  }
-
-  /**
-   * Returns the order that the steps under the given root should be performed in.  If the prerequisites
-   * for more than one step have been met, the step with the lowest alphabetical order will go first.
-   *
-   * @param root First step
-   * @return Order the steps should be performed in.
-   */
-  public static String order(Step root) {
+    Set<Character> done = new HashSet<>();
     StringBuilder order = new StringBuilder();
-
-    Set<Character> completedSteps = new HashSet<>();
-    Map<Character, Step> nextSteps = new HashMap<>();
-    nextSteps.put(root.name, root);
-
     while (!nextSteps.isEmpty()) {
-      char nextStepName = nextSteps.keySet().stream()
-          .min(Comparator.naturalOrder())
-          .orElseThrow(() -> new IllegalStateException("Out of steps"));
+      Character stepName = nextSteps.remove();
+      done.add(stepName);
+      order.append(stepName);
 
-      order.append(nextStepName);
-      completedSteps.add(nextStepName);
-
-      Step step = nextSteps.remove(nextStepName);
-      for (Step next : step.nextSteps) {
-        if (completedSteps.containsAll(next.prerequisites)) {
-          nextSteps.put(next.name, next);
-        }
-      }
+      stepToNextMap.getOrDefault(stepName, ImmutableSet.of()).stream()
+          .filter(nextStepName -> done.containsAll(stepToPreviousMap.get(nextStepName)))
+          .forEach(nextSteps::add);
     }
 
     return order.toString();
@@ -138,9 +96,8 @@ public class Day7 {
   public static void main(String[] args) throws Exception {
     File file = new File(Day7.class.getResource("/day7.txt").getFile());
     ImmutableList<String> lines = ImmutableList.copyOf(Files.readLines(file, Charsets.UTF_8));
-    Step root = parseLines(lines);
 
     // Part 1: what order should the steps be completed in?
-    System.out.println("Part 1: " + order(root));
+    System.out.println("Part 1: " + order(lines));
   }
 }
