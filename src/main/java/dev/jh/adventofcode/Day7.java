@@ -49,6 +49,12 @@ public class Day7 {
     }
   }
 
+  /**
+   * Parses the given list of step restrictions, returning the root of the tree of steps that should be run.
+   *
+   * @param lines Lines to parse - one restriction per line
+   * @return Root of the step tree
+   */
   public static Step parseLines(ImmutableList<String> lines) {
     Pattern pattern = Pattern.compile("Step ([A-Z]) must be finished before step ([A-Z]) can begin.");
 
@@ -80,21 +86,53 @@ public class Day7 {
     while (! previousSteps.isEmpty()) {
       char name = previousSteps.remove();
 
-      ImmutableSet<Character> prerequisites = ImmutableSet.copyOf(stepToPreviousMap.getOrDefault(name, ImmutableSet.of()));
-      previousSteps.addAll(prerequisites);
-
       ImmutableSet<Step> nextSteps = stepToNextMap.getOrDefault(name, ImmutableSet.of()).stream()
           .map(stepMap::get)
           .collect(ImmutableSet.toImmutableSet());
 
+      ImmutableSet<Character> prerequisites = ImmutableSet.copyOf(stepToPreviousMap.getOrDefault(name, ImmutableSet.of()));
+
       stepMap.put(name, new Step(name, prerequisites, nextSteps));
+
+      prerequisites.stream()
+          .filter(prereq -> stepToNextMap.get(prereq).stream().allMatch(stepMap::containsKey))
+          .forEach(previousSteps::add);
     }
 
     return stepMap.get(firstStepName);
   }
 
+  /**
+   * Returns the order that the steps under the given root should be performed in.  If the prerequisites
+   * for more than one step have been met, the step with the lowest alphabetical order will go first.
+   *
+   * @param root First step
+   * @return Order the steps should be performed in.
+   */
   public static String order(Step root) {
-    throw new IllegalStateException("Not implemented"); // TODO: implement
+    StringBuilder order = new StringBuilder();
+
+    Set<Character> completedSteps = new HashSet<>();
+    Map<Character, Step> nextSteps = new HashMap<>();
+    nextSteps.put(root.name, root);
+
+    while (!nextSteps.isEmpty()) {
+      char nextStepName = nextSteps.keySet().stream()
+          .min(Comparator.naturalOrder())
+          .orElseThrow(() -> new IllegalStateException("Out of steps"));
+
+      order.append(nextStepName);
+      completedSteps.add(nextStepName);
+
+      Step step = nextSteps.remove(nextStepName);
+      for (Step next : step.nextSteps) {
+        if (completedSteps.containsAll(next.prerequisites)) {
+          nextSteps.put(next.name, next);
+        }
+      }
+    }
+
+    return order.toString();
   }
 
   public static void main(String[] args) throws Exception {
