@@ -31,4 +31,9 @@ public class Day8Test {
   public void sumMetadata() {
     assertThat(Day8.sumMetadata(EXAMPLE_ROOT)).isEqualTo(138);
   }
+
+  @Test
+  public void sumReference() {
+    assertThat(Day8.sumReference(EXAMPLE_ROOT)).isEqualTo(66);
+  }
 }

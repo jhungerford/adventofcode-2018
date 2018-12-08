@@ -85,6 +85,25 @@ public class Day8 {
     return sum;
   }
 
+  /**
+   * Returns the sum of the referenced values on the node.  If the node has no children, it's value is the
+   * sum of it's metadta entries.  If it does have children, the metadata references the index of the child nodes
+   * (the first child is index 1), and the node's value is the sum of the child nodes' values that exist.
+   *
+   * @param node Node to calculate the referenced value of
+   * @return Referenced value of the node
+   */
+  public static int sumReference(Node node) {
+    if (node.children.isEmpty()) {
+      return node.metadata.stream().mapToInt(Integer::intValue).sum();
+    }
+
+    return node.metadata.stream()
+        .filter(meta -> meta <= node.children.size())
+        .mapToInt(meta -> sumReference(node.children.get(meta - 1)))
+        .sum();
+  }
+
   public static void main(String[] args) throws Exception {
     File file = new File(Day8.class.getResource("/day8.txt").getFile());
     String line = Files.readLines(file, Charsets.UTF_8).get(0);
@@ -92,5 +111,7 @@ public class Day8 {
 
     // Part 1: sum all metadata values.
     System.out.println("Part 1: " + sumMetadata(root));
+    // Part 2: sum of referenced children.
+    System.out.println("Part 2: " + sumReference(root));
   }
 }
