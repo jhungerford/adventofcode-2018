@@ -1,8 +1,5 @@
 package dev.jh.adventofcode;
 
-import com.google.common.base.MoreObjects;
-import com.google.common.base.Objects;
-
 import java.util.Arrays;
 
 public class Day9 {
@@ -68,9 +65,9 @@ public class Day9 {
     }
   }
 
-  public static int highScore(int numPlayers, int lastMarble) {
+  public static long highScore(int numPlayers, int lastMarble) {
     // Scores: removed + held marbles, index per player
-    int[] scores = new int[numPlayers];
+    long[] scores = new long[numPlayers];
     Marble current = Marble.initial();
 
     for (int marble = 1; marble <= lastMarble; marble ++) {
@@ -100,5 +97,7 @@ public class Day9 {
   public static void main(String[] args) {
     // Part 1: what is the winning elf's score?
     System.out.println("Part 1: " + highScore(458, 72019));
+    // Part 2: what would the winning elf's score be if the number of the last marble were 100x larger?
+    System.out.println("Part 2: " + highScore(458, 7201900));
   }
 }
