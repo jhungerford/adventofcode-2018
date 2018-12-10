@@ -166,18 +166,29 @@ public class Day10 {
     }
   }
 
+  public static class AlignmentInfo {
+    public final ImmutableList<Star> stars;
+    public final int seconds;
+
+    public AlignmentInfo(ImmutableList<Star> stars, int seconds) {
+      this.stars = stars;
+      this.seconds = seconds;
+    }
+  }
+
   /**
    * Advances the stars until the rectangle that contains them is at it's smallest.
    *
    * @param stars Stars to advance.
-   * @return Stars in an alignment where they're most contained.
+   * @return Stars in an alignment where they're most contained, and the seconds it took to get there.
    */
-  public static ImmutableList<Star> smallestBounds(ImmutableList<Star> stars) {
+  public static AlignmentInfo alignStars(ImmutableList<Star> stars) {
     ImmutableList<Star> previousStars = stars;
     Bounds previousBounds = Bounds.ofStars(previousStars);
 
     ImmutableList<Star> newStars = tick(stars);
     Bounds newBounds = Bounds.ofStars(newStars);
+    int seconds = 1;
 
     while (previousBounds.compareTo(newBounds) >= 0) {
       previousStars = newStars;
@@ -185,9 +196,10 @@ public class Day10 {
 
       newStars = tick(previousStars);
       newBounds = Bounds.ofStars(newStars);
+      seconds ++;
     }
 
-    return previousStars;
+    return new AlignmentInfo(previousStars, seconds - 1);
   }
 
   /**
@@ -232,8 +244,11 @@ public class Day10 {
         .map(Star::parse)
         .collect(ImmutableList.toImmutableList());
 
-    // Part 1: when the stars are in alignment, what's their message?
-    System.out.println("Part 1: \n" + renderMessage(smallestBounds(stars)));
+    AlignmentInfo alignment = alignStars(stars);
 
+    // Part 1: when the stars are in alignment, what's their message?
+    System.out.println("Part 1: \n" + renderMessage(alignment.stars));
+    // Part 2: how long did it take?
+    System.out.println("Part 2: " + alignment.seconds);
   }
 }

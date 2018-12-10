@@ -83,8 +83,9 @@ public class Day10Test {
   }
 
   @Test
-  public void renderPart1Message() {
-    assertThat(Day10.renderMessage(Day10.smallestBounds(EXAMPLE_STARS))).isEqualTo(
+  public void alignStars() {
+    Day10.AlignmentInfo alignment = Day10.alignStars(EXAMPLE_STARS);
+    assertThat(Day10.renderMessage(alignment.stars)).isEqualTo(
         "#...#..###\n" +
         "#...#...#.\n" +
         "#...#...#.\n" +
@@ -92,6 +93,9 @@ public class Day10Test {
         "#...#...#.\n" +
         "#...#...#.\n" +
         "#...#...#.\n" +
-        "#...#..###\n");
+        "#...#..###\n"
+    );
+
+    assertThat(alignment.seconds).isEqualTo(3);
   }
 }
