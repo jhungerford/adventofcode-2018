@@ -17,11 +17,21 @@ public class Day11Test {
 
   @Test
   public void largestPower18() {
-    assertThat(Day11.largestPower(Day11.grid(18))).isEqualTo(new Day11.Point(33, 45, 29));
+    assertThat(Day11.largestPower(Day11.grid(18), 3)).isEqualTo(new Day11.Point(33, 45, 3, 29));
   }
 
   @Test
   public void largestPower42() {
-    assertThat(Day11.largestPower(Day11.grid(42))).isEqualTo(new Day11.Point(21, 61, 30));
+    assertThat(Day11.largestPower(Day11.grid(42), 3)).isEqualTo(new Day11.Point(21, 61, 3, 30));
+  }
+
+  @Test
+  public void largestTotalPower18() {
+    assertThat(Day11.largestTotalPower(Day11.grid(18))).isEqualTo(new Day11.Point(90, 269, 16, 113));
+  }
+
+  @Test
+  public void largestTotalPower42() {
+    assertThat(Day11.largestTotalPower(Day11.grid(42))).isEqualTo(new Day11.Point(232, 251, 12, 119));
   }
 }
