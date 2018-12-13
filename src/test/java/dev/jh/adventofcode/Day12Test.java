@@ -71,8 +71,8 @@ public class Day12Test {
   @Test
   public void tickExample() {
     Day12.Plants tick = EXAMPLE_PLANTS.tick(EXAMPLE_RULES);
-    assertThat(tick.toString()).isEqualTo(".#...#....#.....#..#..#..#.");
-    assertThat(tick.zeroOffset).isEqualTo(1);
+    assertThat(tick.toString()).isEqualTo("#...#....#.....#..#..#..#");
+    assertThat(tick.zeroOffset).isEqualTo(0);
   }
 
   @Test
@@ -87,6 +87,9 @@ public class Day12Test {
       plants = plants.tick(EXAMPLE_RULES);
     }
 
+    assertThat(plants.zeroOffset).isEqualTo(2);
     assertThat(plants.count()).isEqualTo(325);
+
+    assertThat(Day12.count(EXAMPLE_PLANTS, EXAMPLE_RULES, 20)).isEqualTo(325);
   }
 }

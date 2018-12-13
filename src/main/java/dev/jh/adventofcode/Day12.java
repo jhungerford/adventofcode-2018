@@ -6,8 +6,7 @@ import com.google.common.io.Files;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 import java.util.stream.IntStream;
 
 public class Day12 {
@@ -81,28 +80,70 @@ public class Day12 {
      */
     public Plants tick(ImmutableList<Rule> rules) {
       // Based on the rules, the pots _can_ (but don't have to) expand by one pot in either direction each tick.
-      int newZeroOffset = zeroOffset + 1;
       boolean[] newPlants = new boolean[plants.length + 2];
 
       for (int i = 0; i < newPlants.length; i ++) {
         // Subtract 1 to go from the new plant indexes to the old.
-        newPlants[i] = findRule(rules, i - 1).map(rule -> rule.result).orElse(false);
+        newPlants[i] = newPlant(rules, i - 1);
       }
 
-      return new Plants(newPlants, newZeroOffset);
+      // Contract the plants to have a plant on either end.
+      int firstPlant = firstPlant(newPlants);
+      if (firstPlant == -1) {
+        return new Plants(new boolean[]{}, 0);
+      }
+
+      int lastPlant = lastPlant(newPlants);
+
+      // Add 1 since the newPlants expands plants by 1.
+      boolean[] contractedPlants = Arrays.copyOfRange(newPlants, firstPlant, lastPlant + 1);
+      return new Plants(contractedPlants, zeroOffset - firstPlant + 1);
     }
 
     /**
      * Finds the rule that matches the plant at the center index.  Indexes are in terms of plants.
+     * Returns whether the center will have a plant in the next tick.
      *
      * @param rules List of rules to search through
      * @param center Index of the plant in question.
-     * @return Rule that matches the pattern centered around the given index, or empty if no rules match.
+     * @return Whether the pot in the center index will have a plant in the next tick.
      */
-    private Optional<Rule> findRule(ImmutableList<Rule> rules, int center) {
+    private boolean newPlant(ImmutableList<Rule> rules, int center) {
       return rules.stream()
           .filter(rule -> rule.matches(plants, center))
-          .findFirst();
+          .findFirst()
+          .map(rule -> rule.result)
+          .orElse(false);
+    }
+
+    /**
+     * Returns the index of the first plant in the given list of plants.
+     *
+     * @return Index of the first plant, or -1 if none of the pots contain plants.
+     */
+    private int firstPlant(boolean[] plants) {
+      for (int i = 0; i < plants.length; i ++) {
+        if (plants[i]) {
+          return i;
+        }
+      }
+
+      return -1;
+    }
+
+    /**
+     * Returns the index of the last plant in the given list of plants.
+     *
+     * @return Index of the last plant, or -1 if none of the pots contain plants.
+     */
+    private int lastPlant(boolean[] plants) {
+      for (int i = plants.length - 1; i >= 0; i --) {
+        if (plants[i]) {
+          return i;
+        }
+      }
+
+      return -1;
     }
 
     /**
@@ -151,6 +192,60 @@ public class Day12 {
     }
   }
 
+  private static class PlantGeneration {
+    public final Plants plants;
+    public final long generation;
+
+    public PlantGeneration(Plants plants, long generation) {
+      this.plants = plants;
+      this.generation = generation;
+    }
+  }
+
+  /**
+   * Returns the sum of pots with plants after the given number of generations.
+   *
+   * @param initialPlants Starting position of the plants
+   * @param rules List of rules to apply to the plants
+   * @param generations Number of generations to simulate
+   * @return Sum of the positions of pots with plants after the generations
+   */
+  public static int count(Plants initialPlants, ImmutableList<Rule> rules, long generations) {
+    Plants plants = initialPlants;
+    long generation = 0;
+
+    PlantGeneration cycleStart;
+    PlantGeneration cycleEnd;
+
+    // Map of plant positions to the generation where those positions happened.
+    Map<boolean[], PlantGeneration> previousGenerations = new HashMap<>();
+
+    // Find a cycle where the plants aligned.  The plants can shift together - zeroOffset doesn't have to match.
+    while (generation < generations) {
+      plants = plants.tick(rules);
+      generation ++;
+
+      PlantGeneration currentGeneration = new PlantGeneration(plants, generation);
+      PlantGeneration previousGeneration = previousGenerations.get(plants.plants);
+      if (previousGeneration == null) {
+        previousGenerations.put(plants.plants, currentGeneration);
+      } else {
+        cycleStart = previousGeneration;
+        cycleEnd = currentGeneration;
+        break;
+      }
+    }
+
+    // Finish off the generations.
+    while (generation < generations) {
+      plants.tick(rules);
+      generation ++;
+    }
+
+    // Return the count.
+    return plants.count();
+  }
+
   public static void main(String[] args) throws IOException {
     File file = new File(Day12.class.getResource("/day12.txt").getFile());
     List<String> lines = Files.readLines(file, Charsets.UTF_8);
@@ -161,11 +256,9 @@ public class Day12 {
         .collect(ImmutableList.toImmutableList());
 
     // Part 1: after 20 generations, what is the sum of the numbers of all pots that contain a plant?
-    Plants plants = initialPlants;
-    for (int generation = 0; generation < 20; generation ++) {
-      plants = plants.tick(rules);
-    }
+//    System.out.println("Part 1: " + count(initialPlants, rules, 20));
 
-    System.out.println("Part 1: " + plants.count());
+    // Part 2: after 50 billion generations, what is the sum of numbers of pots that contain a plant?
+    System.out.println("Part 2: " + count(initialPlants, rules, 50000000000L));
   }
 }
