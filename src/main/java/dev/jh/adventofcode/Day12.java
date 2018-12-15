@@ -1,73 +1,24 @@
 package dev.jh.adventofcode;
 
 import com.google.common.base.Charsets;
+import com.google.common.base.MoreObjects;
 import com.google.common.collect.ImmutableList;
 import com.google.common.io.Files;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.*;
-import java.util.stream.IntStream;
+import java.util.BitSet;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 public class Day12 {
 
-  public static class Rule {
-    public final boolean[] pattern;
-    public final boolean result;
-
-    private Rule(boolean[] pattern, boolean result) {
-      this.pattern = pattern;
-      this.result = result;
-    }
-
-    /**
-     * Returns whether this rule applies to the plants around the given index.  Check result on this rule
-     * to determine whether there's a plant in the pot in the next generation if this rule matches.
-     *
-     * @param plants Array of plants.  Pots outside the bounds of the array don't contain plants.
-     * @param center Index of the center of this rule.  Rules always have 5 plants, so this is the plant at index 2.
-     * @return Whether this rule applies to the plant at the center position in the list of plants.
-     */
-    public boolean matches(boolean[] plants, int center) {
-      for (int i = 0; i < pattern.length; i ++) {
-        // Out of bounds pots are not filled with plants, but still match against the pattern.
-        int plantIndex = i - 2 + center;
-        boolean plant = (plantIndex >= 0 && plantIndex < plants.length) && plants[plantIndex];
-
-        if (plant != pattern[i]) {
-          return false;
-        }
-      }
-
-      return true;
-    }
-
-    /**
-     * Parses the given string into a rule.  Rule strings must look like ##.## => #, where each plant character
-     * is either '.' for no plant or '#' for a plant.  The matching portion of the rule must have length 5.
-     *
-     * @param line Line to parse
-     * @return Rule parsed from the given line.
-     */
-    public static Rule parse(String line) {
-      // No invalid input checking on the line - expect it to have the form '..#.. => #'
-      boolean[] pattern = new boolean[5];
-
-      for (int i = 0; i < 5; i ++) {
-        pattern[i] = line.charAt(i) == '#';
-      }
-
-      boolean result = line.charAt(9) == '#';
-
-      return new Rule(pattern, result);
-    }
-  }
-
   public static class Plants {
-    public final boolean[] plants;
-    public final int zeroOffset;
+    public final byte[] plants;
+    public final long zeroOffset;
 
-    public Plants(boolean[] plants, int zeroOffset) {
+    public Plants(byte[] plants, long zeroOffset) {
       this.plants = plants;
       this.zeroOffset = zeroOffset;
     }
@@ -78,72 +29,66 @@ public class Day12 {
      * @param rules List of rules that govern which pots contain plants in the next generation.
      * @return New plants which represents the new generation.
      */
-    public Plants tick(ImmutableList<Rule> rules) {
-      // Based on the rules, the pots _can_ (but don't have to) expand by one pot in either nextTurn each tick.
-      boolean[] newPlants = new boolean[plants.length + 2];
-
-      for (int i = 0; i < newPlants.length; i ++) {
-        // Subtract 1 to go from the new plant indexes to the old.
-        newPlants[i] = newPlant(rules, i - 1);
+    public Plants tick(Rules rules) {
+      // Figure out if the plants array needs to be expanded / contracted based on the new edge values.
+      byte leftExpand = 0;
+      if ((plants[0] & 0xF0) != 0) {
+        leftExpand = rules.apply((byte) 0, (byte) 0, getByte(0));
       }
 
-      // Contract the plants to have a plant on either end.
-      int firstPlant = firstPlant(newPlants);
-      if (firstPlant == -1) {
-        return new Plants(new boolean[]{}, 0);
+      byte left = rules.apply((byte) 0, getByte(0), getByte(1));
+      byte right = rules.apply(getByte(plants.length - 2), getByte(plants.length - 1), (byte) 0);
+
+      byte rightExpand = 0;
+      if ((plants[plants.length-1] & 0x01) != 0) {
+        rightExpand = rules.apply(getByte(plants.length - 1), (byte) 0, (byte) 0);
       }
 
-      int lastPlant = lastPlant(newPlants);
+      // Amount to shift the left / right sides by.  Positive is expand, negative is contract.
+      int leftShift = shiftAmount(leftExpand, left);
+      int rightShift = shiftAmount(rightExpand, right);
 
-      // Add 1 since the newPlants expands plants by 1.
-      boolean[] contractedPlants = Arrays.copyOfRange(newPlants, firstPlant, lastPlant + 1);
-      return new Plants(contractedPlants, zeroOffset - firstPlant + 1);
+      byte[] newPlants = new byte[plants.length + leftShift + rightShift];
+
+      if (leftShift == 0) {
+        newPlants[0] = left;
+      } else if (leftShift == 1) {
+        newPlants[0] = leftExpand;
+        newPlants[1] = left;
+      }
+
+      if (rightShift == 0) {
+        newPlants[newPlants.length - 1] = right;
+      } else if (rightShift == 1) {
+        newPlants[newPlants.length - 1] = rightExpand;
+        newPlants[newPlants.length - 2] = right;
+      }
+
+      for (int i = 1; i < plants.length - 1; i ++) {
+        newPlants[i + leftShift] = rules.apply(getByte(i - 1), getByte(i), getByte(i + 1));
+      }
+
+      return new Plants(newPlants, zeroOffset + leftShift * 8);
     }
 
-    /**
-     * Finds the rule that matches the plant at the center index.  Indexes are in terms of plants.
-     * Returns whether the center will have a plant in the next tick.
-     *
-     * @param rules List of rules to search through
-     * @param center Index of the plant in question.
-     * @return Whether the pot in the center index will have a plant in the next tick.
-     */
-    private boolean newPlant(ImmutableList<Rule> rules, int center) {
-      return rules.stream()
-          .filter(rule -> rule.matches(plants, center))
-          .findFirst()
-          .map(rule -> rule.result)
-          .orElse(false);
-    }
-
-    /**
-     * Returns the index of the first plant in the given list of plants.
-     *
-     * @return Index of the first plant, or -1 if none of the pots contain plants.
-     */
-    private int firstPlant(boolean[] plants) {
-      for (int i = 0; i < plants.length; i ++) {
-        if (plants[i]) {
-          return i;
-        }
+    private byte getByte(int index) {
+      if (index < 0 || index >= plants.length) {
+        return 0;
       }
 
-      return -1;
+      return plants[index];
     }
 
-    /**
-     * Returns the index of the last plant in the given list of plants.
-     *
-     * @return Index of the last plant, or -1 if none of the pots contain plants.
-     */
-    private int lastPlant(boolean[] plants) {
-      for (int i = plants.length - 1; i >= 0; i --) {
-        if (plants[i]) {
-          return i;
-        }
+    private int shiftAmount(int expand, int current) {
+      if (expand != 0) {
+        return 1;
       }
 
-      return -1;
+      if (current == 0) {
+        return -1;
+      }
+
+      return 0;
     }
 
     /**
@@ -151,12 +96,14 @@ public class Day12 {
      *
      * @return Sum of the number of plant containing pots.
      */
-    public int count() {
-      int count = 0;
+    public long count() {
+      long count = 0;
 
       for (int i = 0; i < plants.length; i ++) {
-        if (plants[i]) {
-          count += (i - zeroOffset);
+        for (int bit = 0; bit < 8; bit ++) {
+          if ((plants[i] & 1 << (7-bit)) > 0) {
+            count += i * 8 + bit - zeroOffset;
+          }
         }
       }
 
@@ -172,32 +119,97 @@ public class Day12 {
     public static Plants parse(String line) {
       char[] pots = line.replace("initial state: ", "").toCharArray();
 
-      boolean[] plants = new boolean[pots.length];
-      for (int i = 0; i < pots.length; i ++) {
-        plants[i] = pots[i] == '#';
+      byte[] plants = new byte[(pots.length + 7) / 8];
+
+      byte currentByte = 0;
+      for (int bit = 0; bit < pots.length; bit ++) {
+        int shift = (7 - bit % 8);
+
+        currentByte |= (pots[bit] == '#' ? 1 : 0) << shift;
+
+        if (shift == 0) {
+          plants[bit / 8] = currentByte;
+          currentByte = 0;
+        }
       }
+
+      plants[plants.length - 1] = currentByte;
 
       return new Plants(plants, 0);
     }
 
     @Override
     public String toString() {
-      StringBuilder bldr = new StringBuilder();
+      StringBuilder plantsString = new StringBuilder();
 
-      for (boolean plant : plants) {
-        bldr.append(plant ? '#' : '.');
+      for (int i = 0; i < plants.length; i ++) {
+        for (int bit = 7; bit >= 0; bit --) {
+          plantsString.append((plants[i] & 1 << bit) == 0 ? '.' : '#');
+        }
       }
 
-      return bldr.toString();
+      return MoreObjects.toStringHelper(this)
+          .add("plants", plantsString)
+          .add("zeroOffset", zeroOffset)
+          .toString();
     }
   }
 
-  private static class PlantGeneration {
-    public final Plants plants;
+  public static class Rules {
+    // Index: 0b0000PPBYTEPP, Value: resulting byte - PP is padding, BYTE is 8 bits of plant data.
+    private final byte[] rules;
+
+    public Rules(byte[] rules) {
+      this.rules = rules;
+    }
+
+    public byte apply(byte left, byte center, byte right) {
+      int ruleIndex = ((left & 0x03) << 10)
+          | ((center & 0xFF) << 2)
+          | ((right >> 6) & 0x03);
+
+      return rules[ruleIndex];
+    }
+
+    public static Rules parse(ImmutableList<String> lines) {
+      // Index: 5-digit rule encoded in binary, Value: 0 or 1 for the result of the rule
+      byte[] plainRules = new byte[32];
+
+      for (String line : lines) {
+        int encodedRule = 0;
+
+        for (int i = 0; i < 5; i ++) {
+          if (line.charAt(i) == '#') {
+            encodedRule |= (1 << (4 - i));
+          }
+        }
+
+        plainRules[encodedRule] = (byte) (line.charAt(9) == '#' ? 1 : 0);
+      }
+
+      // Expand the plain rules into all of the possible 12-digit values
+      byte[] rules = new byte[4096];
+      for (int rule = 0; rule < rules.length; rule ++) {
+        byte result = 0;
+
+        for (int shift = 0; shift < 8; shift ++) {
+          // Mask out 5 bits of the rule, shift it into the result spot.
+          result |= plainRules[(rule >>> shift) & 0x1F] << shift;
+        }
+
+        rules[rule] = result;
+      }
+
+      return new Rules(rules);
+    }
+  }
+
+  private static class PlantOffsetGeneration {
+    public final long zeroOffset;
     public final long generation;
 
-    public PlantGeneration(Plants plants, long generation) {
-      this.plants = plants;
+    public PlantOffsetGeneration(long zeroOffset, long generation) {
+      this.zeroOffset = zeroOffset;
       this.generation = generation;
     }
   }
@@ -210,39 +222,48 @@ public class Day12 {
    * @param generations Number of generations to simulate
    * @return Sum of the positions of pots with plants after the generations
    */
-  public static int count(Plants initialPlants, ImmutableList<Rule> rules, long generations) {
+  public static long count(Plants initialPlants, Rules rules, long generations) {
     Plants plants = initialPlants;
     long generation = 0;
 
-    PlantGeneration cycleStart;
-    PlantGeneration cycleEnd;
+    PlantOffsetGeneration cycleStart = null;
 
     // Map of plant positions to the generation where those positions happened.
-    Map<boolean[], PlantGeneration> previousGenerations = new HashMap<>();
+    Map<BitSet, PlantOffsetGeneration> previousGenerations = new HashMap<>();
 
     // Find a cycle where the plants aligned.  The plants can shift together - zeroOffset doesn't have to match.
-    while (generation < generations) {
+    while (generation < generations && cycleStart == null) {
       plants = plants.tick(rules);
       generation ++;
 
-      PlantGeneration currentGeneration = new PlantGeneration(plants, generation);
-      PlantGeneration previousGeneration = previousGenerations.get(plants.plants);
+      BitSet plantsBitSet = BitSet.valueOf(plants.plants);
+
+      PlantOffsetGeneration currentGeneration = new PlantOffsetGeneration(plants.zeroOffset, generation);
+      PlantOffsetGeneration previousGeneration = previousGenerations.get(plantsBitSet);
+
       if (previousGeneration == null) {
-        previousGenerations.put(plants.plants, currentGeneration);
+        previousGenerations.put(plantsBitSet, currentGeneration);
       } else {
         cycleStart = previousGeneration;
-        cycleEnd = currentGeneration;
-        break;
       }
     }
 
-    // Finish off the generations.
-    while (generation < generations) {
-      plants.tick(rules);
-      generation ++;
+    if (cycleStart != null) {
+      long cycleLength = generation - cycleStart.generation;
+      long numCycles = (generations - generation) / cycleLength;
+      long cycleZeroOffset = plants.zeroOffset - cycleStart.zeroOffset;
+
+      // Plant positions stay the same, but the zero offset shifts by the number of cycles.
+      plants = new Plants(plants.plants, plants.zeroOffset + (cycleZeroOffset * numCycles));
+
+      // Finish off the generations.
+      generation += cycleLength * numCycles;
+      while (generation < generations) {
+        plants = plants.tick(rules);
+        generation++;
+      }
     }
 
-    // Return the count.
     return plants.count();
   }
 
@@ -251,12 +272,10 @@ public class Day12 {
     List<String> lines = Files.readLines(file, Charsets.UTF_8);
 
     Plants initialPlants = Plants.parse(lines.get(0));
-    ImmutableList<Rule> rules = IntStream.range(2, lines.size())
-        .mapToObj(i -> Rule.parse(lines.get(i)))
-        .collect(ImmutableList.toImmutableList());
+    Rules rules = Rules.parse(ImmutableList.copyOf(lines.subList(2, lines.size())));
 
     // Part 1: after 20 generations, what is the sum of the numbers of all pots that contain a plant?
-//    System.out.println("Part 1: " + count(initialPlants, rules, 20));
+    System.out.println("Part 1: " + count(initialPlants, rules, 20));
 
     // Part 2: after 50 billion generations, what is the sum of numbers of pots that contain a plant?
     System.out.println("Part 2: " + count(initialPlants, rules, 50000000000L));
