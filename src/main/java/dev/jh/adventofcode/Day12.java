@@ -79,7 +79,7 @@ public class Day12 {
      * @return New plants which represents the new generation.
      */
     public Plants tick(ImmutableList<Rule> rules) {
-      // Based on the rules, the pots _can_ (but don't have to) expand by one pot in either direction each tick.
+      // Based on the rules, the pots _can_ (but don't have to) expand by one pot in either nextTurn each tick.
       boolean[] newPlants = new boolean[plants.length + 2];
 
       for (int i = 0; i < newPlants.length; i ++) {
