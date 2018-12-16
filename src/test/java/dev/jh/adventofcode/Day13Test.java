@@ -40,179 +40,29 @@ public class Day13Test {
   }
 
   @Test
-  public void trackTick() {
-    Day13.Track track = EXAMPLE_TRACK;
-    assertThat(track.carts)
-        .usingElementComparatorIgnoringFields("nextTurn")
-        .containsExactlyInAnyOrderElementsOf(Day13.parseLines(ImmutableList.of(
-            "/->-\\        ",
-            "|   |  /----\\",
-            "| /-+--+-\\  |",
-            "| | |  | v  |",
-            "\\-+-/  \\-+--/",
-            "  \\------/   "
-        )).carts);
-
-    track = track.tick();
-    assertThat(track.carts)
-        .usingElementComparatorIgnoringFields("nextTurn")
-        .containsExactlyInAnyOrderElementsOf(Day13.parseLines(ImmutableList.of(
-            "/-->\\        ",
-            "|   |  /----\\",
-            "| /-+--+-\\  |",
-            "| | |  | |  |",
-            "\\-+-/  \\->--/",
-            "  \\------/   "
-        )).carts);
-
-    track = track.tick();
-    assertThat(track.carts)
-        .usingElementComparatorIgnoringFields("nextTurn")
-        .containsExactlyInAnyOrderElementsOf(Day13.parseLines(ImmutableList.of(
-            "/---v        ",
-            "|   |  /----\\",
-            "| /-+--+-\\  |",
-            "| | |  | |  |",
-            "\\-+-/  \\-+>-/",
-            "  \\------/   "
-        )).carts);
-
-    track = track.tick();
-    assertThat(track.carts)
-        .usingElementComparatorIgnoringFields("nextTurn")
-        .containsExactlyInAnyOrderElementsOf(Day13.parseLines(ImmutableList.of(
-            "/---\\        ",
-            "|   v  /----\\",
-            "| /-+--+-\\  |",
-            "| | |  | |  |",
-            "\\-+-/  \\-+->/",
-            "  \\------/   "
-        )).carts);
-
-    track = track.tick();
-    assertThat(track.carts)
-        .usingElementComparatorIgnoringFields("nextTurn")
-        .containsExactlyInAnyOrderElementsOf(Day13.parseLines(ImmutableList.of(
-            "/---\\        ",
-            "|   |  /----\\",
-            "| /->--+-\\  |",
-            "| | |  | |  |",
-            "\\-+-/  \\-+--^",
-            "  \\------/   "
-        )).carts);
-
-    track = track.tick();
-    assertThat(track.carts)
-        .usingElementComparatorIgnoringFields("nextTurn")
-        .containsExactlyInAnyOrderElementsOf(Day13.parseLines(ImmutableList.of(
-            "/---\\        ",
-            "|   |  /----\\",
-            "| /-+>-+-\\  |",
-            "| | |  | |  ^",
-            "\\-+-/  \\-+--/",
-            "  \\------/   "
-        )).carts);
-
-    track = track.tick();
-    assertThat(track.carts)
-        .usingElementComparatorIgnoringFields("nextTurn")
-        .containsExactlyInAnyOrderElementsOf(Day13.parseLines(ImmutableList.of(
-            "/---\\        ",
-            "|   |  /----\\",
-            "| /-+->+-\\  ^",
-            "| | |  | |  |",
-            "\\-+-/  \\-+--/",
-            "  \\------/   "
-        )).carts);
-
-    track = track.tick();
-    assertThat(track.carts)
-        .usingElementComparatorIgnoringFields("nextTurn")
-        .containsExactlyInAnyOrderElementsOf(Day13.parseLines(ImmutableList.of(
-            "/---\\        ",
-            "|   |  /----<",
-            "| /-+-->-\\  |",
-            "| | |  | |  |",
-            "\\-+-/  \\-+--/",
-            "  \\------/   "
-        )).carts);
-
-    track = track.tick();
-    assertThat(track.carts)
-        .usingElementComparatorIgnoringFields("nextTurn")
-        .containsExactlyInAnyOrderElementsOf(Day13.parseLines(ImmutableList.of(
-            "/---\\        ",
-            "|   |  /---<\\",
-            "| /-+--+>\\  |",
-            "| | |  | |  |",
-            "\\-+-/  \\-+--/",
-            "  \\------/   "
-        )).carts);
-
-    track = track.tick();
-    assertThat(track.carts)
-        .usingElementComparatorIgnoringFields("nextTurn")
-        .containsExactlyInAnyOrderElementsOf(Day13.parseLines(ImmutableList.of(
-            "/---\\        ",
-            "|   |  /--<-\\",
-            "| /-+--+-v  |",
-            "| | |  | |  |",
-            "\\-+-/  \\-+--/",
-            "  \\------/   "
-        )).carts);
-
-    track = track.tick();
-    assertThat(track.carts)
-        .usingElementComparatorIgnoringFields("nextTurn")
-        .containsExactlyInAnyOrderElementsOf(Day13.parseLines(ImmutableList.of(
-            "/---\\        ",
-            "|   |  /-<--\\",
-            "| /-+--+-\\  |",
-            "| | |  | v  |",
-            "\\-+-/  \\-+--/",
-            "  \\------/   "
-        )).carts);
-
-    track = track.tick();
-    assertThat(track.carts)
-        .usingElementComparatorIgnoringFields("nextTurn")
-        .containsExactlyInAnyOrderElementsOf(Day13.parseLines(ImmutableList.of(
-            "/---\\        ",
-            "|   |  /<---\\",
-            "| /-+--+-\\  |",
-            "| | |  | |  |",
-            "\\-+-/  \\-<--/",
-            "  \\------/   "
-        )).carts);
-
-    track = track.tick();
-    assertThat(track.carts)
-        .usingElementComparatorIgnoringFields("nextTurn")
-        .containsExactlyInAnyOrderElementsOf(Day13.parseLines(ImmutableList.of(
-            "/---\\        ",
-            "|   |  v----\\",
-            "| /-+--+-\\  |",
-            "| | |  | |  |",
-            "\\-+-/  \\<+--/",
-            "  \\------/   "
-        )).carts);
-
-    track = track.tick();
-    assertThat(track.carts)
-        .usingElementComparatorIgnoringFields("nextTurn")
-        .containsExactlyInAnyOrderElementsOf(Day13.parseLines(ImmutableList.of(
-            "/---\\        ",
-            "|   |  /----\\",
-            "| /-+--v-\\  |",
-            "| | |  | |  |",
-            "\\-+-/  ^-+--/",
-            "  \\------/   "
-        )).carts);
-  }
-
-  @Test
   public void firstCollision() {
     assertThat(Day13.firstCollision(EXAMPLE_TRACK)).isEqualTo(new Day13.Position(7, 3));
   }
 
+  @Test
+  public void lastCart() {
+    assertThat(Day13.lastCart(Day13.parseLines(ImmutableList.of(
+        "/>-<\\  ",
+        "|   |  ",
+        "| /<+-\\",
+        "| | | v",
+        "\\>+</ |",
+        "  |   ^",
+        "  \\<->/"
+    )))).isEqualTo(new Day13.Position(6, 4));
+  }
+
+  @Test
+  public void lastCartLoop() {
+    assertThat(Day13.lastCart(Day13.parseLines(ImmutableList.of(
+        "/->--->>--\\   /-----<->----\\",
+        "|         |   |            |",
+        "\\---------/   \\------------/"
+    )))).isEqualTo(new Day13.Position(6, 2));
+  }
 }

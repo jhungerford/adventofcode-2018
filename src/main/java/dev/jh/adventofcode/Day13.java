@@ -238,36 +238,6 @@ public class Day13 {
       this.carts = carts;
     }
 
-    public Track tick() {
-      // Carts move one at a time, sorted by row then column.  Can a crash happen in the middle of a tick?
-      Set<Cart> newCarts = new HashSet<>();
-
-      PriorityQueue<Cart> orderedCarts = new PriorityQueue<>(Comparator
-          .comparing((Cart cart) -> cart.position.y)
-          .thenComparing(cart -> cart.position.x));
-
-      orderedCarts.addAll(carts);
-
-      while (!orderedCarts.isEmpty()) {
-        Cart cart = orderedCarts.remove();
-        Position newPosition = cart.direction.move.apply(cart.position);
-        CartTurnDirection newTurnDirection = track[newPosition.y][newPosition.x]
-            .turn.apply(new CartTurnDirection(cart.nextTurn, cart.direction));
-
-
-        boolean collision = orderedCarts.stream().anyMatch(c -> c.position.equals(newPosition))
-            || newCarts.stream().anyMatch(c -> c.position.equals(newPosition));
-
-        if (collision) {
-          System.out.println("Mid-tick collision at " + newPosition);
-        }
-
-        newCarts.add(new Cart(newPosition, newTurnDirection.direction, newTurnDirection.turn));
-      }
-
-      return new Track(track, ImmutableSet.copyOf(newCarts));
-    }
-
     @Override
     public boolean equals(Object o) {
       if (this == o) return true;
@@ -347,18 +317,81 @@ public class Day13 {
 
   public static Position firstCollision(Track track) {
     while (true) {
-      track = track.tick();
-      Map<Position, Long> cartPositionCounts = track.carts.stream()
-          .collect(Collectors.groupingBy(cart -> cart.position, Collectors.counting()));
+      // Tick the track - run through all of the carts in y, x order, bailing if there's a collision.
+      Set<Cart> newCarts = new HashSet<>();
 
-      Optional<Position> collision = cartPositionCounts.entrySet().stream()
-          .filter(positionCounts -> positionCounts.getValue() > 1)
-          .map(Map.Entry::getKey)
-          .findFirst();
+      PriorityQueue<Cart> orderedCarts = new PriorityQueue<>(Comparator
+          .comparing((Cart cart) -> cart.position.y)
+          .thenComparing(cart -> cart.position.x));
 
-      if (collision.isPresent()) {
-        return collision.get();
+      orderedCarts.addAll(track.carts);
+
+      while (!orderedCarts.isEmpty()) {
+        Cart cart = orderedCarts.remove();
+        Position newPosition = cart.direction.move.apply(cart.position);
+        CartTurnDirection newTurnDirection = track.track[newPosition.y][newPosition.x]
+            .turn.apply(new CartTurnDirection(cart.nextTurn, cart.direction));
+
+
+        boolean collision = orderedCarts.stream().anyMatch(c -> c.position.equals(newPosition))
+            || newCarts.stream().anyMatch(c -> c.position.equals(newPosition));
+
+        if (collision) {
+          return newPosition;
+        }
+
+        newCarts.add(new Cart(newPosition, newTurnDirection.direction, newTurnDirection.turn));
       }
+
+      track = new Track(track.track, ImmutableSet.copyOf(newCarts));
+    }
+  }
+
+  public static Position lastCart(Track track) {
+    while (true) {
+      // Tick the track, removing carts that collide.
+      Set<Cart> newCarts = new HashSet<>();
+
+      PriorityQueue<Cart> orderedCarts = new PriorityQueue<>(Comparator
+          .comparing((Cart cart) -> cart.position.y)
+          .thenComparing(cart -> cart.position.x));
+
+      orderedCarts.addAll(track.carts);
+
+      while (!orderedCarts.isEmpty()) {
+        Cart cart = orderedCarts.remove();
+        Position newPosition = cart.direction.move.apply(cart.position);
+        CartTurnDirection newTurnDirection = track.track[newPosition.y][newPosition.x]
+            .turn.apply(new CartTurnDirection(cart.nextTurn, cart.direction));
+
+        ImmutableList<Cart> newCollisions = newCarts.stream()
+            .filter(c -> c.position.equals(newPosition))
+            .collect(ImmutableList.toImmutableList());
+
+        if (!newCollisions.isEmpty()) {
+          newCarts.removeAll(newCollisions);
+        }
+
+        ImmutableList<Cart> orderedCollisions = orderedCarts.stream()
+            .filter(c -> c.position.equals(newPosition))
+            .collect(ImmutableList.toImmutableList());
+
+        if (!orderedCollisions.isEmpty()) {
+          orderedCarts.removeAll(orderedCollisions);
+        }
+
+        if (newCollisions.isEmpty() && orderedCollisions.isEmpty()) {
+          newCarts.add(new Cart(newPosition, newTurnDirection.direction, newTurnDirection.turn));
+        }
+      }
+
+      if (newCarts.isEmpty()) {
+        throw new IllegalStateException("No carts left");
+      } else if (newCarts.size() == 1) {
+        return newCarts.iterator().next().position;
+      }
+
+      track = new Track(track.track, ImmutableSet.copyOf(newCarts));
     }
   }
 
@@ -368,8 +401,11 @@ public class Day13 {
     Track track = parseLines(lines);
 
     // Part 1: what's the location of the first collision?
-    // TODO: it's not 89,53
     Position firstCollision = firstCollision(track);
     System.out.printf("Part 1: %d,%d\n", firstCollision.x, firstCollision.y);
+
+    // Part 2: removing carts that collide, what's the position of the last cart at the end of the tick?
+    Position lastCart = lastCart(track);
+    System.out.printf("Part 2: %d,%d\n", lastCart.x, lastCart.y);
   }
 }
