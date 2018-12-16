@@ -25,4 +25,24 @@ public class Day14Test {
   public void scoreAfter2018() {
     assertThat(Day14.scoreAfter(2018)).isEqualTo("5941429882");
   }
+
+  @Test
+  public void recipesBefore51589() {
+    assertThat(Day14.recipesBefore("51589")).isEqualTo(9);
+  }
+
+  @Test
+  public void recipesBefore01245() {
+    assertThat(Day14.recipesBefore("01245")).isEqualTo(5);
+  }
+
+  @Test
+  public void recipesBefore92510() {
+    assertThat(Day14.recipesBefore("92510")).isEqualTo(18);
+  }
+
+  @Test
+  public void recipesBefore59414() {
+    assertThat(Day14.recipesBefore("59414")).isEqualTo(2018);
+  }
 }
