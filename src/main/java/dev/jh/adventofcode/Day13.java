@@ -10,10 +10,7 @@ import com.google.common.io.Files;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 import java.util.function.UnaryOperator;
 import java.util.stream.Collectors;
 
@@ -242,17 +239,33 @@ public class Day13 {
     }
 
     public Track tick() {
-      ImmutableSet.Builder<Cart> newCarts = ImmutableSet.builder();
+      // Carts move one at a time, sorted by row then column.  Can a crash happen in the middle of a tick?
+      Set<Cart> newCarts = new HashSet<>();
 
-      for (Cart cart : carts) {
+      PriorityQueue<Cart> orderedCarts = new PriorityQueue<>(Comparator
+          .comparing((Cart cart) -> cart.position.y)
+          .thenComparing(cart -> cart.position.x));
+
+      orderedCarts.addAll(carts);
+
+      while (!orderedCarts.isEmpty()) {
+        Cart cart = orderedCarts.remove();
         Position newPosition = cart.direction.move.apply(cart.position);
         CartTurnDirection newTurnDirection = track[newPosition.y][newPosition.x]
             .turn.apply(new CartTurnDirection(cart.nextTurn, cart.direction));
 
+
+        boolean collision = orderedCarts.stream().anyMatch(c -> c.position.equals(newPosition))
+            || newCarts.stream().anyMatch(c -> c.position.equals(newPosition));
+
+        if (collision) {
+          System.out.println("Mid-tick collision at " + newPosition);
+        }
+
         newCarts.add(new Cart(newPosition, newTurnDirection.direction, newTurnDirection.turn));
       }
 
-      return new Track(track, newCarts.build());
+      return new Track(track, ImmutableSet.copyOf(newCarts));
     }
 
     @Override
@@ -355,6 +368,7 @@ public class Day13 {
     Track track = parseLines(lines);
 
     // Part 1: what's the location of the first collision?
+    // TODO: it's not 89,53
     Position firstCollision = firstCollision(track);
     System.out.printf("Part 1: %d,%d\n", firstCollision.x, firstCollision.y);
   }
