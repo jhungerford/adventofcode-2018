@@ -4,12 +4,14 @@ import com.google.common.base.Charsets;
 import com.google.common.base.MoreObjects;
 import com.google.common.base.Objects;
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.Sets;
 import com.google.common.io.Files;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.Arrays;
+import java.util.*;
 import java.util.function.BiFunction;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -37,8 +39,8 @@ public class Day16 {
     SETR((i, r) -> r.set(i.c, r.get(i.a))),
     /** SETI stores value A into register C */
     SETI((i, r) -> r.set(i.c, i.a)),
-    /** GTIR sets register C to 1 if value A is equal to register B.  Otherwise sets register C to 0 */
-    GTIR((i, r) -> r.set(i.c, i.a == r.get(i.b) ? 1 : 0)),
+    /** GTIR sets register C to 1 if value A is greater than register B.  Otherwise sets register C to 0 */
+    GTIR((i, r) -> r.set(i.c, i.a > r.get(i.b) ? 1 : 0)),
     /** GTRI sets register C to 1 if register A is greater than value B.  Otherwise sets register C to 0 */
     GTRI((i, r) -> r.set(i.c, r.get(i.a) > i.b ? 1 : 0)),
     /** GTRR sets register C to 1 if register A is greater than register B.  Otherwise sets register C to 0 */
@@ -172,8 +174,6 @@ public class Day16 {
   }
 
   public static class Sample {
-    private static final Pattern LINE_PATTERN = Pattern.compile("^[a-zA-Z: \\[]*(\\d+),? (\\d+),? (\\d+),? (\\d+)]?");
-
     public final Registers before;
     public final NumericInstruction instruction;
     public final Registers after;
@@ -231,20 +231,21 @@ public class Day16 {
 
       return new Sample(before, instruction, after);
     }
+  }
 
-    private static int[] readLine(String line) {
-      Matcher matcher = LINE_PATTERN.matcher(line);
-      if (! matcher.matches()) {
-        throw new IllegalArgumentException("'" + line + "' is not a valid sample line");
-      }
-
-      return new int[]{
-          Integer.parseInt(matcher.group(1)),
-          Integer.parseInt(matcher.group(2)),
-          Integer.parseInt(matcher.group(3)),
-          Integer.parseInt(matcher.group(4))
-      };
+  private static final Pattern LINE_PATTERN = Pattern.compile("^[a-zA-Z: \\[]*(\\d+),? (\\d+),? (\\d+),? (\\d+)]?");
+  private static int[] readLine(String line) {
+    Matcher matcher = LINE_PATTERN.matcher(line);
+    if (! matcher.matches()) {
+      throw new IllegalArgumentException("'" + line + "' is not a valid sample line");
     }
+
+    return new int[]{
+        Integer.parseInt(matcher.group(1)),
+        Integer.parseInt(matcher.group(2)),
+        Integer.parseInt(matcher.group(3)),
+        Integer.parseInt(matcher.group(4))
+    };
   }
 
   private static ImmutableList<Sample> parseSamples(ImmutableList<String> lines) {
@@ -254,6 +255,86 @@ public class Day16 {
     }
 
     return samples.build();
+  }
+
+  private static ImmutableList<NumericInstruction> parseInstructions(ImmutableList<String> lines) {
+    int index = 0;
+    while (lines.get(index).startsWith("Before")) {
+      index += 4;
+    }
+
+    while (lines.get(index).isEmpty()) {
+      index ++;
+    }
+
+    ImmutableList.Builder<NumericInstruction> instructions = ImmutableList.builder();
+    while (index < lines.size()) {
+      instructions.add(new NumericInstruction(readLine(lines.get(index))));
+      index ++;
+    }
+
+    return instructions.build();
+  }
+
+  public static ImmutableMap<Integer, Opcode> mapOpcodes(ImmutableList<Sample> samples) {
+    Map<Integer, Set<Opcode>> possibleOpcodes = new HashMap<>();
+    ImmutableSet<Opcode> allOpcodes = ImmutableSet.copyOf(Opcode.values());
+
+    // Rip through the samples, narrowing down the possible opcode mappings.
+    for (Sample sample : samples) {
+      ImmutableSet<Opcode> sampleOpcodes = sample.matchingOpcodes();
+      int opcodeNum = sample.instruction.opcode;
+
+      Set<Opcode> narrowedOpcodes = Sets.intersection(sampleOpcodes, possibleOpcodes.getOrDefault(opcodeNum, allOpcodes));
+      possibleOpcodes.put(opcodeNum, narrowedOpcodes);
+    }
+
+    // Resolve the possibilities.  Numbers can still be mapped to multiple opcodes, so use the exact restrictions.
+    ImmutableMap.Builder<Integer, Opcode> opcodeMap = ImmutableMap.builder();
+
+    while(!possibleOpcodes.isEmpty()) {
+      Map<Integer, Set<Opcode>> newPossibleOpcodes = new HashMap<>();
+      newPossibleOpcodes.putAll(possibleOpcodes);
+
+      for (Map.Entry<Integer, Set<Opcode>> entry : possibleOpcodes.entrySet()) {
+        if (entry.getValue().size() == 1) {
+          opcodeMap.put(entry.getKey(), entry.getValue().iterator().next());
+
+          for (Integer newNum : possibleOpcodes.keySet()) {
+            Set<Opcode> newOpcodes = Sets.difference(newPossibleOpcodes.getOrDefault(newNum, ImmutableSet.of()), entry.getValue());
+            if (newOpcodes.isEmpty()) {
+              newPossibleOpcodes.remove(newNum);
+            } else {
+              newPossibleOpcodes.put(newNum, newOpcodes);
+            }
+          }
+        }
+      }
+
+      // Map of opcode -> numbers that can map to that opcode.
+      Map<Opcode, Set<Integer>> opcodeToNumbers = new HashMap<>();
+      possibleOpcodes.values().stream()
+          .flatMap(Collection::stream)
+          .forEach(opcode -> opcodeToNumbers.put(opcode, new HashSet<>()));
+
+      for (Map.Entry<Integer, Set<Opcode>> entry : newPossibleOpcodes.entrySet()) {
+        for (Opcode opcode : entry.getValue()) {
+          opcodeToNumbers.get(opcode).add(entry.getKey());
+        }
+      }
+
+      for (Map.Entry<Opcode, Set<Integer>> entry : opcodeToNumbers.entrySet()) {
+        if (entry.getValue().size() == 1) {
+          Integer num = entry.getValue().iterator().next();
+          opcodeMap.put(num, entry.getKey());
+          newPossibleOpcodes.remove(num);
+        }
+      }
+
+      possibleOpcodes = newPossibleOpcodes;
+    }
+
+    return opcodeMap.build();
   }
 
   public static void main(String[] args) throws IOException {
@@ -268,6 +349,15 @@ public class Day16 {
 
     System.out.println("Part 1: " + part1);
 
-  }
+    // Part 2: Work out the opcode numbers.  What is the value of register 0 after executing the test program?
+    ImmutableList<NumericInstruction> instructions = parseInstructions(lines);
+    ImmutableMap<Integer, Opcode> opcodeMap = mapOpcodes(samples);
 
+    Registers registers = new Registers(new int[]{0, 0, 0, 0});
+    for (NumericInstruction instruction : instructions) {
+      registers = opcodeMap.get(instruction.opcode).instruction.apply(instruction, registers);
+    }
+
+    System.out.println("Part 2: " + registers.get(0));
+  }
 }
