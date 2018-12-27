@@ -157,9 +157,7 @@ public class Day19 {
       this.instructions = instructions;
     }
 
-    public State run() {
-      State state = State.INITIAL;
-
+    public State run(State state) {
       while (inBounds(state.get(instructionRegister))) {
         state = instructions.get(state.get(instructionRegister)).apply(state);
         int newInstructionPointer = state.get(instructionRegister) + 1;
@@ -208,9 +206,13 @@ public class Day19 {
   public static void main(String[] args) throws IOException {
     File file = new File(Day19.class.getResource("/day19.txt").getFile());
     ImmutableList<String> lines = ImmutableList.copyOf(Files.readLines(file, Charsets.UTF_8));
+    Program program = Program.parse(lines);
 
     // Part 1: what value is left in register 0 when the background process halts?
-    Program program = Program.parse(lines);
-    System.out.println("Part 1: " + program.run().get(0));
+    System.out.println("Part 1: " + program.run(State.INITIAL).get(0));
+
+    // Part 2: same question, but register 0 starts with value 1.
+    System.out.println("Part 2: " + program.run(State.INITIAL.set(0, 1)));
+
   }
 }

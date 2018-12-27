@@ -20,6 +20,6 @@ public class Day19Test {
         "seti 9 0 5"
     ));
 
-    assertThat(program.run()).isEqualTo(new Day19.State(new int[]{6, 5, 6, 0, 0, 9}));
+    assertThat(program.run(Day19.State.INITIAL)).isEqualTo(new Day19.State(new int[]{6, 5, 6, 0, 0, 9}));
   }
 }
