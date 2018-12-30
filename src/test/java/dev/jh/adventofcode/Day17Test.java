@@ -20,9 +20,27 @@ public class Day17Test {
         "y=13, x=498..504"
     );
 
-    Day17.Grid grid = Day17.Grid.parseLines(lines);
+    Day17.Grid grid = Day17.parseLines(lines);
 
-    assertThat(grid.squares()).isEqualTo(57);
+    assertThat(grid.flow().waterCount()).isEqualTo(57);
+  }
+
+  @Test
+  public void exampleStill() {
+    ImmutableList<String> lines = ImmutableList.of(
+        "x=495, y=2..7",
+        "y=7, x=495..501",
+        "x=501, y=3..7",
+        "x=498, y=2..4",
+        "x=506, y=1..2",
+        "x=498, y=10..13",
+        "x=504, y=10..13",
+        "y=13, x=498..504"
+    );
+
+    Day17.Grid grid = Day17.parseLines(lines);
+
+    assertThat(grid.flow().stillCount()).isEqualTo(29);
   }
 
   @Test
@@ -55,9 +73,9 @@ public class Day17Test {
         "x=497, y=1..4"
     );
 
-    Day17.Grid grid = Day17.Grid.parseLines(lines);
+    Day17.Grid grid = Day17.parseLines(lines);
 
-    assertThat(grid.squares()).isEqualTo(188);
+    assertThat(grid.flow().waterCount()).isEqualTo(188);
   }
 
   @Test
@@ -82,8 +100,8 @@ public class Day17Test {
         "y=7, x=496..504"
     );
 
-    Day17.Grid grid = Day17.Grid.parseLines(lines);
+    Day17.Grid grid = Day17.parseLines(lines);
 
-    assertThat(grid.squares()).isEqualTo(0);
+    assertThat(grid.flow().waterCount()).isEqualTo(31);
   }
 }
