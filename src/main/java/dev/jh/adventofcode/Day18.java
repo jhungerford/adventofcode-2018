@@ -7,12 +7,11 @@ import com.google.common.io.Files;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.function.Function;
 
 public class Day18 {
-
-
-
   public enum Acre {
     OPEN('.'),
     TREES('|'),
@@ -149,6 +148,32 @@ public class Day18 {
     }
   }
 
+  public static Yard tickMinutes(Yard yard, int minutes) {
+    Map<String, Integer> yardToMinute = new HashMap<>();
+
+    int minute = 1;
+    while (minute <= minutes && !yardToMinute.containsKey(yard.toString())) {
+      yardToMinute.put(yard.toString(), minute);
+      yard = yard.tick();
+      minute ++;
+    }
+
+    if (minute <= minutes) {
+      int cycleStart = yardToMinute.get(yard.toString());
+      int cycleLength = minute - cycleStart;
+      int numCycles = (minutes - minute) / cycleLength;
+
+      minute += numCycles * cycleLength;
+
+      while (minute <= minutes) {
+        yard = yard.tick();
+        minute++;
+      }
+    }
+
+    return yard;
+  }
+
   public static void main(String[] args) throws IOException {
     File file = new File(Day18.class.getResource("/day18.txt").getFile());
     ImmutableList<String> lines = ImmutableList.copyOf(Files.readLines(file, Charsets.UTF_8));
@@ -156,11 +181,9 @@ public class Day18 {
     Yard yard = Yard.parse(lines);
 
     // Part 1: what is the total resource value of the yard after 10 minutes?
-    Yard part1 = yard;
-    for (int i = 0; i < 10; i ++) {
-      part1 = part1.tick();
-    }
+    System.out.println("Part 1: " + tickMinutes(yard, 10).value());
 
-    System.out.println("Part 1: " + part1.value());
+    // Part 2: what is the total value after 1000000000 minutes?
+    System.out.println("Part 2: " + tickMinutes(yard, 1000000000).value());
   }
 }

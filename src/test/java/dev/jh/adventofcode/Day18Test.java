@@ -22,10 +22,7 @@ public class Day18Test {
         "...#.|..|."
     ));
 
-    for (int minute = 0; minute < 10; minute ++) {
-      yard = yard.tick();
-    }
-
-    assertThat(yard.value()).isEqualTo(1147);
+    assertThat(Day18.tickMinutes(yard, 10).value()).isEqualTo(1147);
+    assertThat(Day18.tickMinutes(yard, 1000000000).value()).isEqualTo(0);
   }
 }
