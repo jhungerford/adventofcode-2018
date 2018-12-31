@@ -240,7 +240,7 @@ public class Day20 {
     }
   }
 
-  public static int furthestRoom(ImmutableMap<Point, ImmutableSet<Point>> graph) {
+  public static ImmutableMap<Point, Integer> roomDistances(ImmutableMap<Point, ImmutableSet<Point>> graph) {
     Map<Point, Integer> distances = new HashMap<>();
     distances.put(new Point(0, 0), 0);
 
@@ -259,7 +259,12 @@ public class Day20 {
       }
     }
 
+    return ImmutableMap.copyOf(distances);
+  }
+
+  public static int furthestRoom(ImmutableMap<Point, Integer> distances) {
     int furthest = 0;
+
     for (int distance : distances.values()) {
       if (distance > furthest) {
         furthest = distance;
@@ -274,8 +279,16 @@ public class Day20 {
     String line = Files.asCharSource(file, Charsets.UTF_8).readFirstLine();
 
     ImmutableMap<Point, ImmutableSet<Point>> graph = buildGraph(parse(line));
+    ImmutableMap<Point, Integer> distances = roomDistances(graph);
 
     // Part 1: what is the largest number of doors required to pass through to reach a room?
-    System.out.println("Part 1: " + furthestRoom(graph));
+    System.out.println("Part 1: " + furthestRoom(distances));
+
+    // Part 2: how many rooms have a shortest path that pass through at least 1000 doors?
+    long farRooms = distances.values().stream()
+        .filter(distance -> distance >= 1000)
+        .count();
+
+    System.out.println("Part 2: " + farRooms);
   }
 }
