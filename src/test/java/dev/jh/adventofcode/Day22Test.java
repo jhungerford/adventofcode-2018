@@ -1,37 +1,48 @@
 package dev.jh.adventofcode;
 
+import com.google.common.collect.ImmutableList;
 import org.junit.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 public class Day22Test {
 
+  private static final Day22.Cave EXAMPLE_CAVE = new Day22.Cave(new Day22.Point(10, 10), 510);
+
   @Test
   public void exampleCave() {
-    Day22.Cave cave = new Day22.Cave(10, 10, 510);
-    assertThat(cave.erosion).startsWith(
-        parseErosion("M=.|=.|.|=."),
-        parseErosion(".|=|=|||..|"),
-        parseErosion(".==|....||="),
-        parseErosion("=.|....|.=="),
-        parseErosion("=|..==...=."),
-        parseErosion("=||.=.=||=|"),
-        parseErosion("|.=.===|||."),
-        parseErosion("|..==||=.|="),
-        parseErosion(".=..===..=|"),
-        parseErosion(".======|||="),
-        parseErosion(".===|=|===T"),
-        parseErosion("=|||...|==."),
-        parseErosion("=.=|=.=..=."),
-        parseErosion("||=|=...|=="),
-        parseErosion("|=.=||===.|"),
-        parseErosion("||.|==.|.|.")
+    ImmutableList<String> expected = ImmutableList.of(
+        "M=.|=.|.|=.|=|=.",
+        ".|=|=|||..|.=...",
+        ".==|....||=..|==",
+        "=.|....|.==.|==.",
+        "=|..==...=.|==..",
+        "=||.=.=||=|=..|=",
+        "|.=.===|||..=..|",
+        "|..==||=.|==|===",
+        ".=..===..=|.|||.",
+        ".======|||=|=.|=",
+        ".===|=|===T===||",
+        "=|||...|==..|=.|",
+        "=.=|=.=..=.||==|",
+        "||=|=...|==.=|==",
+        "|=.=||===.|||===",
+        "||.|==.|.|.||=||"
     );
+
+    for (int y = 0; y < expected.size(); y ++) {
+      assertThat(EXAMPLE_CAVE.erosion[y]).startsWith(parseErosion(expected.get(y)));
+    }
   }
 
   @Test
   public void exampleRisk() {
-    assertThat(new Day22.Cave(10, 10, 510).risk()).isEqualTo(114);
+    assertThat(EXAMPLE_CAVE.risk()).isEqualTo(114);
+  }
+
+  @Test
+  public void exampleFastestMinutes() {
+    assertThat(EXAMPLE_CAVE.fastestMinutes()).isEqualTo(45);
   }
 
   private static Day22.Erosion[] parseErosion(String line) {
