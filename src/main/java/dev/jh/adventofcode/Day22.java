@@ -92,7 +92,7 @@ public class Day22 {
     }
 
     private Erosion[][] calculateErosion(Point target, int depth) {
-      Erosion[][] erosion = new Erosion[target.y * 2][target.x * 2];
+      Erosion[][] erosion = new Erosion[target.y * 15][target.x * 15];
       int[][] erosionLevels = new int[erosion.length][erosion[0].length];
 
       for (int diagonalY = 0; diagonalY < erosion.length + erosion[0].length; diagonalY ++) {
@@ -330,6 +330,7 @@ public class Day22 {
     System.out.println("Part 1: " + cave.risk());
 
     // Part 2: what is the fewest number of minutes to reach the target?
+    // TODO: 994 is too high.
     System.out.println("Part 2: " + cave.fastestMinutes());
   }
 }
