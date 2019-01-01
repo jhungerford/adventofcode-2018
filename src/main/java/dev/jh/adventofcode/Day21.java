@@ -8,10 +8,10 @@ import com.google.common.io.Files;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
+import java.util.*;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.BiFunction;
+import java.util.function.Function;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.IntStream;
@@ -151,15 +151,21 @@ public class Day21 {
   public static class Program {
     public final ImmutableList<Instruction> instructions;
     public final int instructionRegister;
+    public final Function<State, Boolean> stateContinue;
 
-    private Program(ImmutableList<Instruction> instructions, int instructionRegister) {
+    private Program(ImmutableList<Instruction> instructions, int instructionRegister, Function<State, Boolean> stateContinue) {
       this.instructionRegister = instructionRegister;
       this.instructions = instructions;
+      this.stateContinue = stateContinue;
     }
 
     public State run(State state) {
       boolean running = true;
       while (running && inBounds(state.get(instructionRegister))) {
+        if (stateContinue != null && !stateContinue.apply(state)) {
+          break;
+        }
+
         state = instructions.get((int) state.get(instructionRegister)).apply(state);
 
         long newInstructionPointer = state.get(instructionRegister) + 1;
@@ -181,7 +187,11 @@ public class Day21 {
       List<Instruction> mutableInstructions = new ArrayList<>(this.instructions);
       mutableInstructions.set(num, instruction);
 
-      return new Program(ImmutableList.copyOf(mutableInstructions), instructionRegister);
+      return new Program(ImmutableList.copyOf(mutableInstructions), instructionRegister, null);
+    }
+
+    public Program withStateContinue(Function<State, Boolean> stateContinue) {
+      return new Program(instructions, instructionRegister, stateContinue);
     }
 
     public static Program parse(ImmutableList<String> lines) {
@@ -196,7 +206,7 @@ public class Day21 {
           .mapToObj(i -> Instruction.parse(lines.get(i)))
           .collect(ImmutableList.toImmutableList());
 
-      return new Program(instructions, instructionRegister);
+      return new Program(instructions, instructionRegister, null);
     }
   }
 
@@ -212,6 +222,32 @@ public class Day21 {
         .run(State.initial());
 
     System.out.println("Part 1: " + part1Result.get(2));
+
+    // Part 2: what is the lowest non-negative integer value for register 0 that causes the program to halt
+    // after executing the _most_ instructions?
+
+    // Look for a loop in the register 2 values - the answer to part 2 will be the value of register 2 before the loop.
+    // Is looking for duplicate values for register 2 the way the loop will manifest?  Turns out yes.
+    AtomicLong previousRegister2 = new AtomicLong();
+    Set<Long> seenRegister2 = new HashSet<>();
+    program.withStateContinue(state -> {
+      if (state.get(5) == 28 && state.get(1) < 256) {
+        long register2 = state.get(2);
+
+        System.out.printf("%50s reg(2) = %32s\n", state, Long.toBinaryString(register2));
+
+        if (seenRegister2.contains(register2)) {
+          return false;
+        }
+
+        seenRegister2.add(register2);
+        previousRegister2.set(register2);
+      }
+
+      return true;
+    }).run(State.initial());
+
+    System.out.println("Part 2: " + previousRegister2);
 
     // Most of the work for this problem was analyzing what the program does.  Analysis:
     /*
