@@ -20,6 +20,12 @@ public class Day19Test {
         "seti 9 0 5"
     ));
 
-    assertThat(program.run(Day19.State.INITIAL)).isEqualTo(new Day19.State(new int[]{6, 5, 6, 0, 0, 9}));
+    Day19.State expectedResult = new Day19.ImmutableState(new int[]{6, 5, 6, 0, 0, 9});
+
+    Day19.State withoutDebugResult = program.run(Day19.ImmutableState.initial());
+    assertThat(withoutDebugResult).isEqualTo(expectedResult);
+
+    Day19.State withDebugResult = program.withDebug(System.out).run(Day19.ImmutableState.initial());
+    assertThat(withDebugResult).isEqualTo(expectedResult);
   }
 }
