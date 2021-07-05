@@ -1,23 +1,17 @@
+use rayon::iter::IntoParallelIterator;
+use rayon::iter::ParallelIterator;
+
 use day15::Map;
 
 fn main() {
     let map = Map::load("input.txt");
 
-    let mut map_copy = map.clone();
-    let mut elf_attack = 3;
-    let mut outcome = map.clone().run(elf_attack);
+    println!("Part 1: {}", map.clone().run(3).total);
 
-    println!("Part 1: {}", outcome.total);
-    println!("Attack {} - outcome: {:?}\n{:?}", elf_attack, &map_copy, &outcome);
-
-    while outcome.num_elves < map.num_elves {
-        map_copy = map.clone();
-        elf_attack += 1;
-        outcome = map_copy.run(elf_attack);
-
-        println!("Attack {} - outcome: {:?}\n{:?}", elf_attack, &map_copy, &outcome);
-    }
+    let (elf_attack, outcome) = (4..100).into_par_iter()
+        .map(|attack| (attack, map.clone().run(attack)))
+        .find_first(|(_, outcome)| outcome.num_elves == map.num_elves)
+        .unwrap();
 
     println!("Part 2: attack {} - outcome {}", elf_attack, outcome.total);
-    // 59708 is too low
 }

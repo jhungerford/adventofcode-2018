@@ -183,16 +183,16 @@ impl Map {
     /// Runs combat on the map, returning the result.  Modifies the positions of units.
     pub fn run(&mut self, elf_attack: i32) -> Outcome {
         let mut rounds = 0;
-        println!("Initial {}: {:?}", &rounds, &self);
+        // println!("Initial {}: {:?}", &rounds, &self);
 
         while self.run_round(elf_attack) {
             rounds += 1;
 
-            println!("Round {}: {:?}", &rounds, &self);
+            // println!("Round {}: {:?}", &rounds, &self);
         }
 
         let total_hp = self.hp.values().sum();
-        println!("Final - round {} total hp {}: {:?}", &rounds, &total_hp, &self);
+        // println!("Final - round {} total hp {}: {:?}", &rounds, &total_hp, &self);
 
         Outcome::new(rounds, total_hp, self.num_goblins, self.num_elves)
     }
@@ -321,116 +321,6 @@ impl Map {
             .sorted_by_key(|target| target.position)
             .map(|target| target.direction)
             .next()
-    }
-
-    fn move_square2(&self, unit: &Position) -> Option<Position> {
-        // println!("Move square {:?}", unit);
-
-        // Unit identifies open squares in range of each target
-        // Determines which of those squares it could reach in the fewest steps
-        // If multiple squares are in range and tied for being reachable in the fewest steps,
-        // the square which is first in reading order is chosen.
-        // Unit takes a single step toward the chosen square along the shortest path
-        // to that square.  If multiple steps would put the unit equally closer to its destination,
-        // the unit chooses the step which is first in reading order.
-
-        let enemy_square = self.enemy(unit);
-
-        // If we're already adjacent to an enemy, there's no need to move.
-        if self.neighbors(unit).iter().any(|(_, square)| *square == enemy_square) {
-            // println!("    Already adjacent to enemy.");
-            return None;
-        }
-
-        // Identify targets - some may not be reachable.
-        let mut targets = HashSet::new();
-        for row in 0..self.squares.len() {
-            for col in 0..self.squares[row].len() {
-                if self.squares[row][col] == enemy_square {
-                    for (pos, square) in self.neighbors(&Position::new(row, col)) {
-                        if square == Square::Open {
-                            targets.insert(pos);
-                        }
-                    }
-                }
-            }
-        }
-
-        // Find reachable targets - in range with the fewest steps, pick first in reading order.
-        #[derive(Debug, Clone)]
-        struct ToVisit {
-            steps: usize,
-            position: Position,
-            path: Vec<Position>,
-        }
-
-        let mut steps = 0;
-        let mut shortest_paths = Vec::new();
-        let mut to_visit = VecDeque::new();
-        let mut visited = HashSet::new();
-
-        to_visit.push_back(ToVisit {
-            steps: 0,
-            position: unit.clone(),
-            path: Vec::new(),
-        });
-
-        while shortest_paths.is_empty() && !to_visit.is_empty() {
-            steps += 1;
-
-            while let Some(next) = to_visit.pop_front() {
-                if next.steps >= steps {
-                    to_visit.push_front(next);
-                    break;
-                }
-
-                visited.insert(next.position);
-
-                if targets.contains(&next.position) {
-                    shortest_paths.push(next.clone());
-                }
-
-                for (pos, square) in self.neighbors(&next.position) {
-                    if square == Square::Open && !visited.contains(&pos) {
-                        let mut path = next.path.clone();
-                        path.push(pos.clone());
-
-                        to_visit.push_back(ToVisit {
-                            steps,
-                            position: pos.clone(),
-                            path,
-                        });
-                    }
-                }
-            }
-        }
-
-        // println!("    Shortest paths: {:?}", shortest_paths);
-
-        // Pick a target - first in reading order.
-        let maybe_target = shortest_paths.iter()
-            .map(|path| path.position)
-            .sorted()
-            .next();
-
-        if maybe_target.is_none() {
-            return None;
-        }
-
-        let target = maybe_target.unwrap();
-        // println!("    Target: {:?}", target);
-
-        // Move along the shortest path to the target, moving to the first square in reading order
-        // if there are multiple shortest paths to the target.
-        let move_to = shortest_paths.into_iter()
-            .filter(|v| v.position == target)
-            .flat_map(|v| v.path.first().cloned())
-            .sorted()
-            .next();
-
-        // println!("    Move to {:?}", move_to);
-
-        move_to
     }
 
     /// Returns the position of the target that the given unit will attack, or empty if no
