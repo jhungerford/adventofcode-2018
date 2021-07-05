@@ -19,3 +19,8 @@ target/
 *.class
 out/
 
+# Rust
+rust/**/target/
+rust/**/Cargo.lock
+rust/**/*.rs.bk
+
