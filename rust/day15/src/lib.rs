@@ -30,7 +30,7 @@ use std::fmt::{Debug, Formatter, Write};
 // finds no targets during its turn).
 
 const INITIAL_HP: i32 = 200;
-const ATTACK: i32 = 3;
+const DEFAULT_ATTACK: i32 = 3;
 
 #[derive(Debug, Eq, PartialEq)]
 struct ParseErr {}
@@ -112,12 +112,12 @@ impl Debug for Position {
     }
 }
 
-#[derive(Eq, PartialEq)]
+#[derive(Eq, PartialEq, Clone)]
 pub struct Map {
     hp: HashMap<Position, i32>,
     squares: Vec<Vec<Square>>,
-    num_elves: usize,
-    num_goblins: usize,
+    pub num_elves: usize,
+    pub num_goblins: usize,
 }
 
 impl Debug for Map {
@@ -181,11 +181,11 @@ impl Map {
     }
 
     /// Runs combat on the map, returning the result.  Modifies the positions of units.
-    pub fn run(&mut self) -> Outcome {
+    pub fn run(&mut self, elf_attack: i32) -> Outcome {
         let mut rounds = 0;
         println!("Initial {}: {:?}", &rounds, &self);
 
-        while self.run_round() {
+        while self.run_round(elf_attack) {
             rounds += 1;
 
             println!("Round {}: {:?}", &rounds, &self);
@@ -194,15 +194,14 @@ impl Map {
         let total_hp = self.hp.values().sum();
         println!("Final - round {} total hp {}: {:?}", &rounds, &total_hp, &self);
 
-        Outcome::new(rounds, total_hp)
+        Outcome::new(rounds, total_hp, self.num_goblins, self.num_elves)
     }
 
     /// Runs a round of combat on this map, modifying units.  Returns whether combat continues.
-    fn run_round(&mut self) -> bool {
+    fn run_round(&mut self, elf_attack: i32) -> bool {
         // Units take their turns in reading order.
         let all_units = self.units();
         let mut defeated_units = HashSet::new();
-        // println!("{:?}", all_units);
 
         for unit in all_units {
             // Stop the round if there are no more enemies.
@@ -215,6 +214,14 @@ impl Map {
                 continue;
             }
 
+            // Unit type determines attack power.
+            let attack;
+            if self.squares[unit.row][unit.col] == Square::Elf {
+                attack = elf_attack;
+            } else {
+                attack = DEFAULT_ATTACK;
+            }
+
             // Units move if they aren't in range of an enemy.
             let mut target = self.attack_target(&unit);
             if target == None {
@@ -225,8 +232,7 @@ impl Map {
 
             // Then attack if they are in range.
             if let Some(target_pos) = target {
-                // println!("  {:?} attacks {:?}", &unit, &target_pos);
-                let defeated = self.attack(&target_pos);
+                let defeated = self.attack(&target_pos, attack);
                 if defeated {
                     defeated_units.insert(target_pos);
                 }
@@ -441,8 +447,8 @@ impl Map {
     }
 
     /// Attacks the enemy at the given position, returning whether the enemy was defeated.
-    fn attack(&mut self, pos: &Position) -> bool {
-        let new_hp = self.hp[pos] - ATTACK;
+    fn attack(&mut self, pos: &Position, attack: i32) -> bool {
+        let new_hp = self.hp[pos] - attack;
         let defeated = new_hp < 0;
 
         if defeated {
@@ -546,50 +552,53 @@ mod map_tests {
 
     #[test]
     fn run_sample() {
-        let mut map = Map::load("sample.txt");
-
-        let outcome = map.run();
-
-        assert_eq!(47, outcome.rounds);
-        assert_eq!(590, outcome.hp);
+        let map = Map::load("sample.txt");
+        let outcome = map.clone().run(DEFAULT_ATTACK);
         assert_eq!(27730, outcome.total);
+        assert_eq!(Outcome::new(47, 590, 4, 0), outcome);
+
+        assert_eq!(Outcome::new(29, 172, 0, 2), map.clone().run(15));
     }
 
     #[test]
     fn run_sample2() {
-        let mut map = Map::load("sample2.txt");
-        assert_eq!(Outcome::new(37, 982), map.run());
+        let map = Map::load("sample2.txt");
+        assert_eq!(Outcome::new(37, 982, 0, 5), map.clone().run(DEFAULT_ATTACK));
     }
 
     #[test]
     fn run_sample3() {
-        let mut map = Map::load("sample3.txt");
-        assert_eq!(Outcome::new(46, 859), map.run());
+        let map = Map::load("sample3.txt");
+        assert_eq!(Outcome::new(46, 859, 0, 5), map.clone().run(DEFAULT_ATTACK));
+        assert_eq!(Outcome::new(33, 948, 0, 6), map.clone().run(4));
     }
 
     #[test]
     fn run_sample4() {
-        let mut map = Map::load("sample4.txt");
-        assert_eq!(Outcome::new(35, 793), map.run());
+        let map = Map::load("sample4.txt");
+        assert_eq!(Outcome::new(35, 793, 5, 0), map.clone().run(DEFAULT_ATTACK));
+        assert_eq!(Outcome::new(37, 94, 0, 2), map.clone().run(15));
     }
 
     #[test]
     fn run_sample5() {
-        let mut map = Map::load("sample5.txt");
-        assert_eq!(Outcome::new(54, 536), map.run());
+        let map = Map::load("sample5.txt");
+        assert_eq!(Outcome::new(54, 536, 4, 0), map.clone().run(DEFAULT_ATTACK));
+        assert_eq!(Outcome::new(39, 166, 0, 2), map.clone().run(12));
     }
 
     #[test]
     fn run_sample6() {
-        let mut map = Map::load("sample6.txt");
-        assert_eq!(Outcome::new(20, 937), map.run());
+        let map = Map::load("sample6.txt");
+        assert_eq!(Outcome::new(20, 937, 5, 0), map.clone().run(DEFAULT_ATTACK));
+        assert_eq!(Outcome::new(30, 38, 0, 1), map.clone().run(34));
     }
 
     #[test]
     fn run_round_sample() {
         let mut map = Map::load("sample.txt");
 
-        map.run_round();
+        map.run_round(DEFAULT_ATTACK);
 
         let expected_hp = vec![
             (Position::new(1, 3), 200),
@@ -679,11 +688,13 @@ pub struct Outcome {
     pub hp: i32,
     /// Battle outcome: rounds * hp
     pub total: i32,
+    pub num_goblins: usize,
+    pub num_elves: usize,
 }
 
 impl Outcome {
-    fn new(rounds: i32, hp: i32) -> Outcome {
-        Outcome { rounds, hp, total: rounds * hp }
+    fn new(rounds: i32, hp: i32, num_goblins: usize, num_elves: usize) -> Outcome {
+        Outcome { rounds, hp, total: rounds * hp, num_goblins, num_elves }
     }
 }
 
@@ -693,7 +704,7 @@ mod outcome_tests {
 
     #[test]
     fn compute_total() {
-        let outcome = Outcome::new(20, 937);
+        let outcome = Outcome::new(20, 937, 0, 0);
         assert_eq!(20, outcome.rounds);
         assert_eq!(937, outcome.hp);
         assert_eq!(18740, outcome.total);
