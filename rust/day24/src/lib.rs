@@ -207,25 +207,41 @@ impl Game {
         Game::new(immune_system, infection)
     }
 
-    /// Runs combat in the game, returning the number of units that the winning army has.
-    /// Modifies the game in place.
-    pub fn run(&mut self) -> i32 {
+    /// Boosts the immune system's attack by the given amount.
+    pub fn boost_immune(&mut self, amount: i32) -> &mut Self {
+        for group in self.groups.get_mut(&GroupType::ImmuneSystem).unwrap() {
+            group.attack += amount;
+        }
+
+        self
+    }
+
+    /// Runs combat in the game, returning the winner and number of units that the winning army has
+    /// or none if the game ends in a stalemate.  Modifies the game in place.
+    pub fn run(&mut self) -> Option<(GroupType, i32)> {
         while !self.groups[&GroupType::ImmuneSystem].is_empty() && !self.groups[&GroupType::Infection].is_empty() {
-            self.step()
+            let damage = self.step();
+            if damage == 0 {
+                return None;
+            }
         }
 
         let winner;
         if self.groups[&GroupType::ImmuneSystem].is_empty() {
-            winner = &self.groups[&GroupType::Infection];
+            winner = GroupType::Infection;
+        } else if self.groups[&GroupType::Infection].is_empty() {
+            winner = GroupType::ImmuneSystem;
         } else {
-            winner = &self.groups[&GroupType::ImmuneSystem];
+            return None;
         }
 
-        winner.iter().map(|group| group.units).sum()
+        let winning_units = self.groups[&winner].iter().map(|group| group.units).sum();
+
+        Some((winner, winning_units))
     }
 
-    /// Performs one round of combat, modifying this game.
-    fn step(&mut self) {
+    /// Performs one round of combat, modifying this game.  Returns the number of units killed.
+    fn step(&mut self) -> i32 {
         // sorts:
         // target: raw attack power, then initiative (both descending)
         // selection: damage (unique per group with weaknesses / immunities)
@@ -251,9 +267,12 @@ impl Game {
         let attacks = self.select_targets();
 
         // Attack: in descending initiative order, attacking groups deal damage to defending groups.
+        let mut units_killed = 0;
         for attack in attacks {
-            self.attack(attack);
+            units_killed += self.attack(attack);
         }
+
+        units_killed
     }
 
     /// Picks out targets, returning attacks in the order they should be carried out.
@@ -283,12 +302,14 @@ impl Game {
                 .next();
 
             if let Some(target_group) = maybe_target {
-                defending_initiatives.insert(target_group.initiative);
-                attacks.push(Attack {
-                    attacker_type: attacker_type.clone(),
-                    attacker_init: attacker_group.initiative,
-                    defender_init: target_group.initiative,
-                });
+                if attacker_group.power(target_group) > 0 {
+                    defending_initiatives.insert(target_group.initiative);
+                    attacks.push(Attack {
+                        attacker_type: attacker_type.clone(),
+                        attacker_init: attacker_group.initiative,
+                        defender_init: target_group.initiative,
+                    });
+                }
             }
         }
 
@@ -298,13 +319,14 @@ impl Game {
     }
 
     /// Carries out the given attack if the attacker and defender are still alive.
-    fn attack(&mut self, attack: Attack) {
+    /// Returns the number of units killed.
+    fn attack(&mut self, attack: Attack) -> i32 {
         let defender_type = attack.attacker_type.enemy();
         let maybe_attacker = self.groups[&attack.attacker_type].iter().find(|group| group.initiative == attack.attacker_init);
         let maybe_defender = self.groups[&defender_type].iter().find_position(|group| group.initiative == attack.defender_init);
 
         if maybe_attacker.is_none() || maybe_defender.is_none() {
-            return;
+            return 0;
         }
 
         let attacker = maybe_attacker.unwrap();
@@ -318,6 +340,8 @@ impl Game {
         } else {
             self.groups.get_mut(&defender_type).unwrap()[defender_index].units -= defeated_units;
         }
+
+        defeated_units
     }
 }
 
@@ -415,7 +439,15 @@ mod tests {
     #[test]
     fn run_sample() {
         let mut game = Game::load("sample.txt");
-        assert_eq!(5216, game.run());
+        assert_eq!(Some((GroupType::Infection, 5216)), game.run());
+    }
+
+    #[test]
+    fn run_sample_boost() {
+        let mut game = Game::load("sample.txt");
+        game.boost_immune(1570);
+
+        assert_eq!(Some((GroupType::ImmuneSystem, 51)), game.run());
     }
 
     #[test]
